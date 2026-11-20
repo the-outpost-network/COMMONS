@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><h1 class="page-title">{{ en.JOIN_TITLE }}</h1></div>
+  </section>
+  <section class="card narrow">
+    <p>{{ en.JOIN_INTRO }}</p>
+    <div class="copy-out">
+      <code class="link-out" id="invite-code" aria-label="{{ en.JOIN_CODE_LABEL }}">{{ code }}</code>
+      <button class="btn sm secondary" type="button" data-copy="invite-code" data-copied="{{ en.COPIED }}" aria-live="polite" hidden>{{ en.COPY }}</button>
+    </div>
+    <ol>{% for step in en.JOIN_STEPS %}<li>{{ step }}</li>{% endfor %}</ol>
+    <a class="btn" href="/auth/login?signup=1">{{ en.JOIN_BUTTON }}</a>
+  </section>
+{% endblock %}

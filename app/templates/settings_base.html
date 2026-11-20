@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><h1 class="page-title">{{ en.SETTINGS_TITLE }}</h1>
+      <span class="intro">{{ en.SETTINGS_INTRO }}</span></div>
+  </section>
+  <div class="layout">
+    <nav class="side" aria-label="Settings sections">
+      <a href="/admin/resources" class="{{ 'on' if section == 'resources' }}" {% if section == 'resources' %}aria-current="page"{% endif %}>Resources</a>
+      <a href="/admin/bookable" class="{{ 'on' if section == 'bookable' }}" {% if section == 'bookable' %}aria-current="page"{% endif %}>{{ en.BOOKABLE_TITLE }}</a>
+      <a href="/admin/members" class="{{ 'on' if section == 'members' }}" {% if section == 'members' %}aria-current="page"{% endif %}>Members</a>
+    </nav>
+    <div class="smain">
+      {% if done %}<div class="ok-box" role="status">{{ done }}</div>{% endif %}
+      {% if error %}<div class="alert-box" role="alert"><span aria-hidden="true">!</span><span>{{ error }}</span></div>{% endif %}
+      {% block settings %}{% endblock %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title | default(en.APP_NAME) }}</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ asset_versions['app.css'] }}">
+  {% if current %}<meta name="csrf-token" content="{{ current.csrf_token }}">{% endif %}
+  {# The CSP allows no inline code: keep htmx from injecting styles or evaluating JS. #}
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false, "historyCacheSize": 0}'>
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/vendor/htmx-ext-sse.min.js" defer></script>
+  <script src="/static/app.js?v={{ asset_versions['app.js'] }}" defer></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body{% if current %} hx-headers='{"X-CSRF-Token": "{{ current.csrf_token }}"}'{% endif %}>
+{% block page %}
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/">
+        <span class="wm">{{ en.WORDMARK }}</span>
+        {% if community_name %}<span class="comm">{{ community_name }}</span>{% endif %}
+      </a>
+      {% if current %}
+        {% set m = current.member %}
+        {% set is_admin = "admin" in m.role_names %}
+        {% set top_role = en.ROLE_NAMES.admin if is_admin else (en.ROLE_NAMES.board if "board" in m.role_names else en.ROLE_NAMES.member) %}
+        {% set me = short_name(m) %}
+        <nav class="tabs" aria-label="Main">
+          <a href="/" class="{{ 'on' if nav == 'board' }}" {% if nav == 'board' %}aria-current="page"{% endif %}>{{ en.NAV_BOARD }}</a>
+          <a href="/calendar" class="{{ 'on' if nav == 'calendar' }}" {% if nav == 'calendar' %}aria-current="page"{% endif %}>{{ en.CAL_NAV }}</a>
+          <a href="/proposals" class="{{ 'on' if nav == 'proposals' }}" {% if nav == 'proposals' %}aria-current="page"{% endif %}>{{ en.PROPOSALS_NAV }}</a>
+          <a href="/log" class="{{ 'on' if nav == 'log' }}" {% if nav == 'log' %}aria-current="page"{% endif %}>{{ en.LOG_NAV }}</a>
+          <a href="/me" class="{{ 'on' if nav == 'me' }}" {% if nav == 'me' %}aria-current="page"{% endif %}>{{ en.ME_NAV }}</a>
+          {% if is_admin %}
+            <a href="/admin/resources" class="{{ 'on' if nav == 'settings' }}" {% if nav == 'settings' %}aria-current="page"{% endif %}>{{ en.NAV_SETTINGS }}</a>
+          {% endif %}
+        </nav>
+        <details class="acct-wrap">
+          <summary class="acct" aria-label="{{ en.ACCOUNT_LABEL.format(name=me, role=top_role) }}">
+            <span class="av" aria-hidden="true">{{ me[:2] | upper }}</span>
+          </summary>
+          <div class="menu">
+            <div class="who">
+              <span class="small muted">{{ en.SIGNED_IN_AS }}</span>
+              <b>{{ me }}</b>
+              {# Breaks only after the colon, so the server name moves down whole. #}
+              {% set uid = m.matrix_user_id.partition(":") %}
+              <span class="small muted mxid"><span>{{ uid[0] }}{{ uid[1] }}</span><wbr><span>{{ uid[2] }}</span></span>
+              <span class="tag">{{ top_role }}</span>
+            </div>
+            <form method="post" action="/auth/logout">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <button type="submit">{{ en.LOG_OUT }}</button>
+            </form>
+            <form method="post" action="/auth/logout-everywhere">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <button type="submit">{{ en.LOG_OUT_EVERYWHERE }}</button>
+            </form>
+          </div>
+        </details>
+      {% endif %}
+    </header>
+    <main class="stack-6">
+      {% block content %}{% endblock %}
+    </main>
+    {% include "_footer.html" %}
+  </div>
+{% endblock %}
+</body>
+</html>

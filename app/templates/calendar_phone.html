@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><a class="back" href="/calendar">{{ en.CAL_BACK }}</a><h1 class="page-title">{{ en.PHONE_TITLE }}</h1></div>
+  </section>
+  <section class="card" aria-label="{{ en.PHONE_TITLE }}">
+    {% if done %}<div class="ok-box" role="status">{{ done }}</div>{% endif %}
+    <p>{{ en.PHONE_INTRO }} {{ en.PHONE_ONLY_MINE }}</p>
+    <p class="muted">{{ en.PHONE_NETWORK }}</p>
+    {% if link %}
+      <div class="subtle-box">
+        <b class="small" id="f-link-label">{{ en.PHONE_SHOWN_ONCE }}</b>
+        <div class="copy-out">
+          <code class="link-out" id="f-link" aria-labelledby="f-link-label">{{ link }}</code>
+          <button class="btn sm secondary" type="button" data-copy="f-link" data-copied="{{ en.COPIED }}" aria-live="polite" hidden>{{ en.COPY }}</button>
+        </div>
+      </div>
+    {% endif %}
+    {% if token %}
+      <span>{{ en.PHONE_ACTIVE.format(when=loc(token.created_at)) }}</span>
+      <div class="actions">
+        <form method="post" action="/calendar/phone">
+          <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+          <button class="btn sm secondary" type="submit">{{ en.PHONE_REMAKE }}</button>
+        </form>
+        <form method="post" action="/calendar/phone/revoke">
+          <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+          <button class="btn sm danger" type="submit">{{ en.PHONE_REVOKE }}</button>
+        </form>
+      </div>
+      <span class="small muted">{{ en.PHONE_REMAKE_HINT }} {{ en.PHONE_REVOKE_HINT }}</span>
+    {% else %}
+      <span class="muted">{{ en.PHONE_NONE }}</span>
+      <form method="post" action="/calendar/phone">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn" type="submit">{{ en.PHONE_MAKE }}</button>
+      </form>
+    {% endif %}
+  </section>
+  <section class="card tight" aria-label="How to add it">
+    <h3>How to add it</h3>
+    <dl class="facts">
+      {% for device, how in en.PHONE_HOW %}<dt>{{ device }}</dt><dd>{{ how }}</dd>{% endfor %}
+    </dl>
+  </section>
+{% endblock %}

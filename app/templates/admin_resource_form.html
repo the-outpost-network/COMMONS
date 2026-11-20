@@ -1,0 +1,50 @@
+{% extends "settings_base.html" %}
+{% macro field(name, kind="text", cls="") %}
+  {% set label, hint = en.RESOURCES_FIELDS[name] %}
+  <label for="f-{{ name }}">{{ label }}</label>
+  <div class="field">
+    <input class="inp {{ cls }} {{ 'bad' if errors.get(name) }}" id="f-{{ name }}" name="{{ name }}" type="{{ kind }}"
+      value="{{ form[name] }}" {% if kind == "text" %}autocomplete="off"{% else %}inputmode="decimal"{% endif %}
+      {% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}
+      {{ caller() if caller is defined else "" }}>
+    {% if errors.get(name) %}<span class="err" id="e-{{ name }}" role="alert">{{ errors[name] }}</span>
+    {% elif hint %}<span class="hint">{{ hint }}</span>{% endif %}
+  </div>
+{% endmacro %}
+{% block settings %}
+  <section class="card" aria-label="{{ title }}">
+    <div class="sect-h"><h2>{{ title }}{% if category %}: {{ category.name }}{% endif %}</h2>
+      <a class="back" href="/admin/resources">Back to resources</a></div>
+    <form class="form" method="post" action="/admin/resources{{ '/' ~ category.id if category }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <div class="form-grid">
+        {{ field("name") }}
+        {% if category %}
+          <label for="f-slug">{{ en.RESOURCES_FIELDS.slug[0] }}</label>
+          <div class="field"><input class="inp mono" id="f-slug" value="{{ category.slug }}" readonly>
+            <span class="hint">Fixed: chat and the history refer to it.</span></div>
+        {% else %}
+          {{ field("slug", cls="mono") }}
+        {% endif %}
+        {{ field("unit", cls="short") }}
+        <span class="lab">{{ en.RESOURCES_FIELDS.kind[0] }}</span>
+        <div class="field">
+          <div class="choices" role="radiogroup" aria-label="{{ en.RESOURCES_FIELDS.kind[0] }}">
+            {% for k in kinds %}
+              <label><input type="radio" name="kind" value="{{ k }}" {{ "checked" if form.kind == k }}> {{ en.RESOURCES_KIND_HELP[k] }}</label>
+            {% endfor %}
+          </div>
+          {% if errors.get("kind") %}<span class="err" role="alert">{{ errors.kind }}</span>{% endif %}
+        </div>
+        {{ field("shortage_threshold", cls="short") }}
+        {{ field("capacity", cls="short") }}
+        {{ field("forecast_horizon_days", cls="short") }}
+        {{ field("aliases") }}
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">{{ "Save" if category else en.RESOURCES_NEW_TITLE }}</button>
+        <a class="btn secondary" href="/admin/resources">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

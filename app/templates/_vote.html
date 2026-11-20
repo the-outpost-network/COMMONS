@@ -1,0 +1,77 @@
+{#- One vote as a card (Votes tab, vote page, Board tab). `v` is a proposals.VoteView:
+    anonymous counts and turnout, and the signed-in member's own choice, never anyone else's.
+    `back` is where the one-tap vote returns to: list, detail or board. -#}
+{% macro vote_card(v, current, back) %}
+{% set p = v.p %}
+<article class="card vote" id="vote-{{ p.id }}" aria-labelledby="q-{{ p.id }}">
+  <div class="row-between">
+    <span class="actions">
+      <span class="pill type-{{ v.tint }}">{{ v.type_name }}</span>
+      <span class="pill outline">{{ en.VOTES_BALLOT_LIVE if p.results == "live" else en.VOTES_BALLOT_AFTER }}</span>
+      {% if v.amount %}<span class="pill outline">{{ v.amount }}</span>{% endif %}
+      <span class="pill outline">{{ en.VOTES_PASSES_OVER.format(threshold=v.threshold) }}</span>
+    </span>
+    {% if p.status == "open" %}
+      <span class="pill dark">{{ en.VOTES_CLOSES.format(when=p.closes_at | local) }}</span>
+    {% else %}
+      <span class="pill result-{{ v.result }}">{{ v.result_text }}</span>
+    {% endif %}
+  </div>
+  <p class="q" id="q-{{ p.id }}">{% if back != "detail" %}<a href="/proposals/{{ p.id }}">{{ p.question }}</a>{% else %}{{ p.question }}{% endif %}</p>
+  {% if p.why and back != "board" %}<p class="lead why">{{ p.why }}</p>{% endif %}
+  <span class="small muted">{{ en.VOTES_PROPOSED_BY.format(name=v.proposer, when=p.created_at | local) }}</span>
+  {% if v.proposer_chat %}<span class="actions"><a class="btn line sm" href="{{ v.proposer_chat }}">{{ en.VOTES_MESSAGE_PROPOSER.format(name=v.proposer) }}</a></span>{% endif %}
+
+  <div class="vote-body">
+    {% if v.show_counts %}
+      <div class="opts">
+        {% for o in v.options %}
+          <div class="opt">
+            <div class="l"><span>{% if o.leading %}<b>{{ o.label }}</b>{% else %}{{ o.label }}{% endif %}{% if o.mine %} · {{ en.VOTES_YOUR_VOTE }}{% endif %}</span>
+              <span class="nowrap"><b>{{ o.count }}</b> · {{ o.pct }} %</span></div>
+            <div class="bar" aria-hidden="true"><div class="fill-{{ o.fill }} {{ 'lead' if o.leading else 'acc' }}"></div></div>
+          </div>
+        {% endfor %}
+        <span class="small muted">{{ en.VOTES_ABSTAINED.format(n=v.abstained, cast=v.cast) }}{% if v.abstained_mine %} · {{ en.VOTES_YOU_ABSTAINED }}{% endif %}</span>
+      </div>
+      <div class="turnout">
+        <span class="k-up">{{ en.VOTES_TURNOUT }}</span>
+        <span><b class="big">{{ v.turnout }}</b> <span class="muted">{{ en.VOTES_OF_VOTED.format(eligible=v.eligible) }}</span></span>
+        <div class="bar" aria-hidden="true"><div class="fill-{{ v.turnout_fill }}"></div></div>
+        {% if v.note %}<span class="fs-14">{{ v.note }}</span>{% endif %}
+      </div>
+    {% else %}
+      <div class="opts">
+        <span><b class="big">{{ v.turnout }}</b> <span class="muted">{{ en.VOTES_OF_VOTED.format(eligible=v.eligible) }}</span></span>
+        <div class="bar" aria-hidden="true"><div class="fill-{{ v.turnout_fill }}"></div></div>
+        {% if p.status == "open" %}<span class="small muted">{{ en.VOTES_HIDDEN_HINT }}</span>{% endif %}
+      </div>
+      {% if p.status == "open" %}
+        <div class="turnout fs-14">
+          {% if v.mine_label %}<span><b>{{ en.VOTES_YOU_CHOSE.format(label=v.mine_label) }}</b> {{ en.VOTES_ONLY_YOU }}</span>
+          {% else %}<span><b>{{ en.VOTES_NOT_YET }}</b> {{ en.VOTES_GIVE_UP.format(when=p.closes_at | local) }}</span>{% endif %}
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% if v.can_vote %}
+    <form class="actions vote-buttons" method="post" action="/proposals/{{ p.id }}/vote">
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      {% for o in v.options %}
+        <button class="btn {{ 'sel' if o.mine }}" type="submit" name="choice" value="{{ o.id }}" aria-pressed="{{ 'true' if o.mine else 'false' }}">{% if o.mine %}✓ {% endif %}{{ o.label }}</button>
+      {% endfor %}
+      <button class="btn line {{ 'sel' if v.abstained_mine }}" type="submit" name="choice" value="abstain" aria-pressed="{{ 'true' if v.abstained_mine else 'false' }}">{% if v.abstained_mine %}✓ {% endif %}{{ en.VOTES_ABSTAIN }}</button>
+      <span class="small muted">{{ en.VOTES_CHANGE_HINT }}</span>
+    </form>
+  {% elif p.status == "open" %}
+    <span class="small muted">{{ en.VOTES_ONLY_ACTIVE }}</span>
+  {% elif v.mine_label %}
+    <span class="small">{{ en.VOTES_YOU_CHOSE.format(label=v.mine_label) }} {{ en.VOTES_ONLY_YOU }}</span>
+  {% endif %}
+</article>
+{% endmacro %}
+
+{#- Link to a decision-log entry: the page that starts at it. -#}
+{% macro log_link(seq, text) %}<a href="/log?before={{ seq + 1 }}#entry-{{ seq }}">{{ text }}</a>{% endmacro %}

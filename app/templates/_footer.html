@@ -1,0 +1,7 @@
+<footer class="foot">
+  <p>{{ en.FOOTER_LINE.format(community=community_name or en.FOOTER_COMMUNITY) }}</p>
+  <nav aria-label="{{ en.FOOTER_NAV }}">
+    {% if current %}<a href="/log">{{ en.LOG_NAV }}</a>{% endif %}
+    <a href="{{ source_url }}" rel="noopener">{{ en.FOOTER_SOURCE }}</a>
+  </nav>
+</footer>

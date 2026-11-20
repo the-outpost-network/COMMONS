@@ -1,0 +1,8 @@
+{# Nothing can be booked yet: admins get the way to add things, members whom to ask. #}
+<section class="card tight empty-state">
+  <p><b>{{ en.CAL_NOTHING_TO_BOOK }}</b></p>
+  {% if "admin" in current.member.role_names %}
+    <p>{{ en.CAL_NOTHING_TO_BOOK_ADMIN }}</p>
+    <p><a class="btn" href="/admin/bookable/new">{{ en.CAL_ADD_THING }}</a></p>
+  {% elif admins %}<p class="muted">{{ en.ASK_ADMIN.format(names=admins | join(en.ASK_ADMIN_OR)) }}</p>{% endif %}
+</section>

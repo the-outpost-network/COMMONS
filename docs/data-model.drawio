@@ -1,0 +1,196 @@
+<mxfile host="app.diagrams.net" modified="2026-11-10T10:52:00.000Z" agent="Outpost/5.0" version="24.7.17" type="device">
+  <diagram id="commons-current-schema" name="Current repository schema">
+    <mxGraphModel dx="1000" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="760" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="current-root" parent="0" />
+        <mxCell id="current-title" value="COMMONS · current repository schema&#xa;Implemented in app/models.py; PostgreSQL 17 tables created at startup" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="current-root">
+          <mxGeometry x="40" y="25" width="850" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="current-note" value="Only these four COMMONS application tables exist today. Product screens beyond Matrix identity and sign-in use prototype/sample data." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;align=left;spacing=10;" vertex="1" parent="current-root">
+          <mxGeometry x="40" y="100" width="850" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="current-member" value="&lt;b&gt;member&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;UQ matrix_user_id&lt;br&gt;display_name NULL&lt;br&gt;created_at&lt;br&gt;deactivated_at NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=13;align=left;spacingLeft=8;spacingTop=5;" vertex="1" parent="current-root">
+          <mxGeometry x="60" y="230" width="240" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="current-role" value="&lt;b&gt;member_role&lt;/b&gt;&lt;hr&gt;PK/FK member_id&lt;br&gt;PK role CHECK&lt;br&gt;granted_at&lt;br&gt;granted_by FK NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=13;align=left;spacingLeft=8;spacingTop=5;" vertex="1" parent="current-root">
+          <mxGeometry x="380" y="230" width="240" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="current-session" value="&lt;b&gt;session&lt;/b&gt;&lt;hr&gt;PK id_hash (SHA-256)&lt;br&gt;FK member_id&lt;br&gt;created_at, last_seen_at&lt;br&gt;expires_at&lt;br&gt;revoked_at NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=13;align=left;spacingLeft=8;spacingTop=5;" vertex="1" parent="current-root">
+          <mxGeometry x="60" y="470" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="current-auth-event" value="&lt;b&gt;auth_event&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK member_id NULL&lt;br&gt;ts, kind&lt;br&gt;channel CHECK (web / matrix)" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=13;align=left;spacingLeft=8;spacingTop=5;" vertex="1" parent="current-root">
+          <mxGeometry x="380" y="470" width="240" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="current-member-role-edge" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="current-root" source="current-member" target="current-role">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="current-member-session-edge" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="current-root" source="current-member" target="current-session">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="current-member-auth-edge" value="0..1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="current-root" source="current-member" target="current-auth-event">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="current-legend" value="Green = implemented now&#xa;Integer entity IDs; UTC timestamptz. Session cookie stored as SHA-256 hex. No password, email, ledger, vote, booking, or decision-log tables are present." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#94a3b8;fontSize=13;align=left;spacing=10;" vertex="1" parent="current-root">
+          <mxGeometry x="700" y="230" width="300" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres-server-current" value="PostgreSQL 17 · Compose service: postgres&#xa;COMMONS database: commons (role: commons)&#xa;Separate databases: synapse and mas&#xa;COMMONS schema shown here; no cross-database app access" style="shape=cylinder;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=13;align=center;verticalAlign=middle;" vertex="1" parent="current-root">
+          <mxGeometry x="700" y="400" width="300" height="190" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="commons-target-schema" name="Target schema aligned to product">
+    <mxGraphModel dx="2100" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2100" pageHeight="1450" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="target-root" parent="0" />
+        <mxCell id="target-title" value="COMMONS · PostgreSQL 17 target data model aligned to the repository and prototype&#xa;Design proposal only: tables other than the green identity tables are not implemented yet" style="text;html=1;strokeColor=none;fillColor=none;fontSize=20;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="target-root">
+          <mxGeometry x="30" y="15" width="1250" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="identity-lane" value="Identity &amp; member preferences" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#64748b;fillColor=#f8fafc;swimlaneFillColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="target-root">
+          <mxGeometry x="30" y="90" width="380" height="850" as="geometry" />
+        </mxCell>
+        <mxCell id="resource-lane" value="Resources &amp; forecasts" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#64748b;fillColor=#f8fafc;swimlaneFillColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="target-root">
+          <mxGeometry x="430" y="90" width="380" height="850" as="geometry" />
+        </mxCell>
+        <mxCell id="governance-lane" value="Proposals &amp; actions" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#64748b;fillColor=#f8fafc;swimlaneFillColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="target-root">
+          <mxGeometry x="830" y="90" width="380" height="850" as="geometry" />
+        </mxCell>
+        <mxCell id="booking-lane" value="Spaces &amp; bookings" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#64748b;fillColor=#f8fafc;swimlaneFillColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="target-root">
+          <mxGeometry x="1230" y="90" width="300" height="850" as="geometry" />
+        </mxCell>
+        <mxCell id="audit-lane" value="Configuration, badges &amp; audit" style="swimlane;whiteSpace=wrap;html=1;rounded=1;strokeColor=#64748b;fillColor=#f8fafc;swimlaneFillColor=#ffffff;fontStyle=1;fontSize=16;" vertex="1" parent="target-root">
+          <mxGeometry x="1550" y="90" width="520" height="850" as="geometry" />
+        </mxCell>
+
+        <mxCell id="member" value="&lt;b&gt;member&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;UQ matrix_user_id&lt;br&gt;display_name&lt;br&gt;created_at, deactivated_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="15" y="55" width="165" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="member_role" value="&lt;b&gt;member_role&lt;/b&gt;&lt;hr&gt;PK/FK member_id&lt;br&gt;PK/FK role_id&lt;br&gt;granted_at&lt;br&gt;granted_by FK" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="195" y="55" width="165" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="session" value="&lt;b&gt;session&lt;/b&gt;&lt;hr&gt;PK id_hash&lt;br&gt;FK member_id&lt;br&gt;created_at, expires_at&lt;br&gt;revoked_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="15" y="220" width="165" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_event" value="&lt;b&gt;auth_event&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK member_id NULL&lt;br&gt;ts, kind, channel" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dcfce7;strokeColor=#15803d;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="195" y="220" width="165" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="member_profile" value="&lt;b&gt;member_profile&lt;/b&gt; · opt-in&lt;hr&gt;PK/FK member_id&lt;br&gt;contact_email NULL&lt;br&gt;country NULL&lt;br&gt;birthday month/day NULL&lt;br&gt;skills_text NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="15" y="370" width="165" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="skill_tag" value="&lt;b&gt;skill_tag&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;UQ slug&lt;br&gt;name" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="195" y="390" width="165" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="member_skill" value="&lt;b&gt;member_skill&lt;/b&gt;&lt;hr&gt;PK/FK member_id&lt;br&gt;PK/FK skill_tag_id&lt;br&gt;source&lt;br&gt;confirmed_at NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="195" y="540" width="165" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="notification_preference" value="&lt;b&gt;notification_preference&lt;/b&gt;&lt;hr&gt;PK/FK member_id&lt;br&gt;PK notification_kind&lt;br&gt;PK channel&lt;br&gt;enabled, updated_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="15" y="560" width="165" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="role" value="&lt;b&gt;role&lt;/b&gt;&lt;hr&gt;PK id · UQ slug&lt;br&gt;name, description&lt;br&gt;archived_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="identity-lane">
+          <mxGeometry x="195" y="700" width="165" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="resource_category" value="&lt;b&gt;resource_category&lt;/b&gt;&lt;hr&gt;PK id · UQ slug&lt;br&gt;name, unit, kind&lt;br&gt;capacity, threshold&lt;br&gt;forecast horizon&lt;br&gt;archived_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="resource-lane">
+          <mxGeometry x="15" y="55" width="165" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="resource_entry" value="&lt;b&gt;resource_entry&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK category_id&lt;br&gt;FK member_id NULL&lt;br&gt;entry_type, amount, note&lt;br&gt;occurred_at, channel&lt;br&gt;corrects_entry_id FK NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="resource-lane">
+          <mxGeometry x="195" y="55" width="165" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="sensor_token" value="&lt;b&gt;sensor_token&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK category_id&lt;br&gt;UQ token_hash&lt;br&gt;label, revoked_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="resource-lane">
+          <mxGeometry x="15" y="245" width="165" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="forecast_run" value="&lt;b&gt;forecast_run&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK category_id&lt;br&gt;ran_at, method&lt;br&gt;point_count, horizon&lt;br&gt;series_json, shortage_date" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="resource-lane">
+          <mxGeometry x="195" y="265" width="165" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="resource_alert" value="&lt;b&gt;resource_alert&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK category_id&lt;br&gt;FK forecast_run_id&lt;br&gt;kind, raised_at&lt;br&gt;cleared_at NULL" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="resource-lane">
+          <mxGeometry x="105" y="450" width="165" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="proposal_type" value="&lt;b&gt;proposal_type&lt;/b&gt;&lt;hr&gt;PK id · UQ slug&lt;br&gt;name, description" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="governance-lane">
+          <mxGeometry x="15" y="55" width="165" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="proposal" value="&lt;b&gt;proposal&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK created_by&lt;br&gt;title, question, status&lt;br&gt;opens_at, closes_at&lt;br&gt;quorum_pct NULL, threshold_pct&lt;br&gt;rules fixed at opening&lt;br&gt;ended_at/by, outcome NULL&lt;br&gt;cancel_reason NULL&lt;br&gt;later: type, amount" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="governance-lane">
+          <mxGeometry x="195" y="55" width="170" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="proposal_option" value="&lt;b&gt;proposal_option&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK proposal_id&lt;br&gt;position 1–6, label&lt;br&gt;UQ proposal/position&lt;br&gt;2–6 per proposal, fixed" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="governance-lane">
+          <mxGeometry x="15" y="300" width="165" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="vote" value="&lt;b&gt;vote&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK proposal_id, member_id&lt;br&gt;FK (proposal_id, option_id)&lt;br&gt;cast_at, channel&lt;br&gt;superseded_at NULL, set once&lt;br&gt;partial UQ current vote" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="governance-lane">
+          <mxGeometry x="195" y="300" width="170" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="follow_up" value="&lt;b&gt;follow_up&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK proposal_id NULL&lt;br&gt;FK owner_id, created_by&lt;br&gt;title, description&lt;br&gt;due_at, status, completed_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="governance-lane">
+          <mxGeometry x="105" y="510" width="175" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="space" value="&lt;b&gt;space&lt;/b&gt;&lt;hr&gt;PK id · UQ slug&lt;br&gt;name, description&lt;br&gt;archived_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="booking-lane">
+          <mxGeometry x="65" y="100" width="170" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="booking" value="&lt;b&gt;booking&lt;/b&gt;&lt;hr&gt;PK id&lt;br&gt;FK space_id, member_id&lt;br&gt;starts_at, ends_at&lt;br&gt;purpose, channel&lt;br&gt;cancelled_at/by/reason&lt;br&gt;no-overlap exclusion constraint" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="booking-lane">
+          <mxGeometry x="45" y="290" width="210" height="155" as="geometry" />
+        </mxCell>
+
+        <mxCell id="config_kv" value="&lt;b&gt;config_kv&lt;/b&gt;&lt;hr&gt;PK key&lt;br&gt;value_json&lt;br&gt;updated_at, updated_by FK" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="audit-lane">
+          <mxGeometry x="15" y="55" width="165" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="badge_rule" value="&lt;b&gt;badge_rule&lt;/b&gt;&lt;hr&gt;PK id · UQ slug&lt;br&gt;name, description&lt;br&gt;rule_json, archived_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="audit-lane">
+          <mxGeometry x="205" y="55" width="165" height="125" as="geometry" />
+        </mxCell>
+        <mxCell id="member_badge" value="&lt;b&gt;member_badge&lt;/b&gt;&lt;hr&gt;PK/FK member_id&lt;br&gt;PK/FK badge_rule_id&lt;br&gt;awarded_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="audit-lane">
+          <mxGeometry x="205" y="215" width="165" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="signing_key" value="&lt;b&gt;signing_key&lt;/b&gt;&lt;hr&gt;PK key_id&lt;br&gt;public_key&lt;br&gt;created_at, retired_at" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=12;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="audit-lane">
+          <mxGeometry x="15" y="380" width="165" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="decision_log" value="&lt;b&gt;decision_log&lt;/b&gt;&lt;hr&gt;PK seq&lt;br&gt;FK actor_member_id NULL&lt;br&gt;FK key_id&lt;br&gt;ts, kind, payload_json&lt;br&gt;prev_hash, entry_hash UQ&lt;br&gt;signature" style="shape=table;html=1;whiteSpace=wrap;container=1;collapsible=0;childLayout=stackLayout;horizontal=1;startSize=30;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=11;align=left;spacingLeft=7;spacingTop=5;" vertex="1" parent="audit-lane">
+          <mxGeometry x="205" y="380" width="175" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge_member_role" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="member_role"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_role_member_role" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="role" target="member_role"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_session" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="session"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_auth" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#15803d;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="auth_event"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_profile" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#ea580c;endArrow=ERone;startArrow=ERone;" edge="1" parent="target-root" source="member" target="member_profile"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_skill" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="member_skill"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_tag_skill" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="skill_tag" target="member_skill"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_pref" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="notification_preference"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="edge_cat_entry" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="resource_category" target="resource_entry"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_cat_sensor" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="resource_category" target="sensor_token"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_cat_forecast" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="resource_category" target="forecast_run"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_forecast_alert" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="forecast_run" target="resource_alert"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_cat_alert" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="resource_category" target="resource_alert"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_entry" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="resource_entry"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="edge_type_proposal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="proposal_type" target="proposal"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_proposal_option" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="proposal" target="proposal_option"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_proposal_vote" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="proposal" target="vote"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_vote" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="vote"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_option_vote" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="proposal_option" target="vote"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_proposal_followup" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="proposal" target="follow_up"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_alert_proposal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;dashed=1;" edge="1" parent="target-root" source="resource_alert" target="proposal"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="edge_space_booking" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="space" target="booking"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_booking" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="booking"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="edge_member_badge" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="member_badge"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_badge_rule" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="badge_rule" target="member_badge"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_signing_key" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="signing_key" target="decision_log"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_log" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="decision_log"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="edge_member_proposal" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2563eb;endArrow=ERmany;startArrow=ERone;" edge="1" parent="target-root" source="member" target="proposal"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="target-legend" value="Green: implemented now   Blue: proposed target tables   Orange: optional/sensitive profile data&#xa;ER arrows show parent → child (1:N). Proposal discussions and private ballots are deliberately absent. The activity feed is a projection, not a separate source-of-truth table." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#94a3b8;fontSize=13;align=left;spacing=10;" vertex="1" parent="target-root">
+          <mxGeometry x="30" y="990" width="1250" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="profile-warning" value="Contact email, country, birthday (month/day), and member-entered skills are optional prototype fields. Keep unset until purpose/visibility/retention are approved. Email is not used for login." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=13;align=left;spacing=10;" vertex="1" parent="target-root">
+          <mxGeometry x="1310" y="990" width="760" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres-target-notes" value="PostgreSQL conventions: integer identity IDs + integer FKs; timestamptz values stored in UTC; SHA-256 hex digests for session/sensor tokens; archive entities with history instead of deleting. PostgreSQL-specific: numeric amounts · jsonb payloads · partial unique index for current vote · GiST exclusion constraint (btree_gist) for active booking overlap.&#xa;Decision log format is frozen v1: canonical UTF-8 JSON with sorted keys/no whitespace → SHA-256 → Ed25519 signature over the raw digest bytes." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dbeafe;strokeColor=#2563eb;fontSize=13;align=left;spacing=12;" vertex="1" parent="target-root">
+          <mxGeometry x="30" y="1080" width="2040" height="85" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

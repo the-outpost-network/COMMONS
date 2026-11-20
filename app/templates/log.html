@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><h1 class="page-title">{{ en.LOG_TITLE }}</h1>
+      <span class="intro">{{ en.LOG_INTRO }}</span></div>
+  </section>
+
+  {% include "_log_verify.html" %}
+
+  <section class="card tight" aria-label="{{ en.LOG_TITLE }}">
+    {% if rows %}
+      <div class="table-wrap"><table class="stack log-table">
+        <thead><tr><th>{{ en.LOG_COL_SEQ }}</th><th>{{ en.LOG_COL_WHEN }}</th><th>{{ en.LOG_COL_WHO }}</th><th>{{ en.LOG_COL_WHAT }}</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          {% set e = r.entry %}
+          <tr id="entry-{{ e.seq }}">
+            <td data-label="{{ en.LOG_COL_SEQ }}" class="mono lt-col">{{ e.seq }}</td>
+            <td data-label="{{ en.LOG_COL_WHEN }}" class="nowrap lt-col"><time datetime="{{ e.ts.isoformat() }}" title="{{ e.ts | stamp }}">{{ e.ts | local }}</time></td>
+            <td data-label="{{ en.LOG_COL_WHO }}" class="lt-col">{{ r.actor }}</td>
+            <td data-label="{{ en.LOG_COL_WHAT }}" class="lt-what">
+              <span class="lt-summary">{{ r.summary }}</span>
+              {# Phones: the sentence first, then one quiet line instead of the columns. #}
+              <span class="lt-meta small muted" aria-hidden="true">{{ r.actor }} · {{ e.ts | local }} · #{{ e.seq }}</span>
+              <details class="entry">
+                <summary class="small">{{ en.LOG_DETAILS }}</summary>
+                <pre class="mono payload">{{ r.payload }}</pre>
+                <dl class="small hashes">
+                  <dt>{{ en.LOG_KIND_LABEL }}</dt><dd><code class="mono">{{ e.kind }}</code></dd>
+                  <dt>{{ en.LOG_ENTRY_HASH }}</dt><dd><code class="mono break">{{ e.entry_hash }}</code></dd>
+                  <dt>{{ en.LOG_PREV_HASH }}</dt><dd><code class="mono break">{{ e.prev_hash }}</code></dd>
+                  <dt>{{ en.LOG_SIGNATURE }}</dt><dd><code class="mono break">{{ e.signature }}</code></dd>
+                  <dt>{{ en.LOG_KEY_ID }}</dt><dd><code class="mono">{{ e.key_id }}</code></dd>
+                </dl>
+              </details>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <span class="empty">{{ en.LOG_EMPTY }}</span>
+    {% endif %}
+    {% if older or not first_page %}
+      <span class="actions">
+        {% if not first_page %}<a class="btn secondary sm" href="/log">{{ en.LOG_NEWEST }}</a>{% endif %}
+        {% if older %}<a class="btn secondary sm" href="/log?before={{ older }}">{{ en.LOG_OLDER }}</a>{% endif %}
+      </span>
+    {% endif %}
+  </section>
+  <section class="card tight" aria-labelledby="check-yourself">
+    <h2 id="check-yourself" class="h3">{{ en.LOG_YOURSELF_TITLE }}</h2>
+    <p class="small">{{ en.LOG_YOURSELF_TEXT }}</p>
+    <span class="actions">
+      <a class="btn secondary sm" href="/api/log/export" download="{{ export_file }}">{{ en.LOG_DOWNLOAD_LOG }}</a>
+      <a class="btn secondary sm" href="/api/log/keys" download="{{ keys_file }}">{{ en.LOG_DOWNLOAD_KEYS }}</a>
+    </span>
+    <p class="small">{{ en.LOG_YOURSELF_RUN }}</p>
+    <pre class="mono payload">python3 scripts/verify_log.py {{ export_file }} --pubkeys {{ keys_file }}{% if anchor %} --anchor {{ anchor.seq }}:{{ anchor.hash }}{% endif %}</pre>
+    <p class="small">{{ en.LOG_ANCHORS }}</p>
+    {% if anchor %}<p class="small">{{ en.LOG_LAST_ANCHOR.format(seq=anchor.seq, hash="") }}<code class="mono break">{{ anchor.hash }}</code></p>{% endif %}
+    <p class="small muted">{{ en.LOG_BALLOT_LIMIT }}</p>
+  </section>
+{% endblock %}

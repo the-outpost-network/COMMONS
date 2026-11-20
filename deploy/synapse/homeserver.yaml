@@ -1,0 +1,41 @@
+# Synapse trial config (non-secret part). The database and MAS sections, which
+# contain passwords, are in secrets/matrix/synapse.yaml (scripts/synapse_trial_init.py).
+server_name: "commons.theoutpost.network"
+public_baseurl: "https://matrix.commons.theoutpost.network/"
+pid_file: /tmp/homeserver.pid
+
+listeners:
+  - port: 8008
+    type: http
+    tls: false
+    x_forwarded: true
+    bind_addresses: ["0.0.0.0"]
+    resources:
+      - names: [client]
+        compress: false
+
+media_store_path: /data/media_store
+signing_key_path: /run/secrets/synapse_signing_key
+max_upload_size: 20M
+
+# Closed community server: no federation, no calls home.
+federation_domain_whitelist: []
+allow_public_rooms_over_federation: false
+trusted_key_servers: []
+suppress_key_server_warning: true
+report_stats: false
+enable_metrics: false
+url_preview_enabled: false
+
+# Accounts are created in MAS (mas-cli manage register-user).
+enable_registration: false
+
+# Push notifications carry only event/room ids, not message content.
+push:
+  include_content: false
+
+# Closed community server: member search finds every local account,
+# not only people you already share a room with (Synapse's default).
+user_directory:
+  enabled: true
+  search_all_users: true

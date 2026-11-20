@@ -1,0 +1,12 @@
+# Extra MAS config, read after secrets/matrix/mas.yaml.
+# MAS appends lists from later config files, so this only adds one listener.
+#
+# The admin API on its own port: only COMMONS calls it, over the internal Docker
+# network. Caddy proxies only port 8080, so it is never reachable from outside.
+http:
+  listeners:
+    - name: internal-admin
+      resources:
+        - name: adminapi
+      binds:
+        - address: "[::]:8081"

@@ -1,0 +1,87 @@
+{% extends "settings_base.html" %}
+{% set c = h.category %}
+{% set stock = c.kind == "stock" %}
+{% set q = "from=" ~ (form["from"] | urlencode) ~ "&to=" ~ (form["to"] | urlencode) %}
+{% macro dmy(d) %}{{ d.strftime("%d.%m.%y") }}{% endmacro %}
+{% block settings %}
+  <section class="card" aria-label="{{ title }}">
+    <div class="sect-h"><h2>{{ title }}{% if not c.is_active %} <span class="st off">archived</span>{% endif %}</h2>
+      <a class="back" href="/admin/resources">Back to resources</a></div>
+    <p class="muted">{{ en.HISTORY_INTRO }}</p>
+
+    <form class="history-period" method="get" action="/admin/resources/{{ c.id }}/history">
+      <label>From <input class="inp" type="date" name="from" value="{{ form['from'] }}" max="9999-12-31"></label>
+      <label>To <input class="inp" type="date" name="to" value="{{ form['to'] }}" max="9999-12-31"></label>
+      <button class="btn secondary" type="submit">Show</button>
+      <a class="btn" href="/admin/resources/{{ c.id }}/history.csv?{{ q }}" download>Download CSV</a>
+    </form>
+
+    <dl class="history-sum">
+      <div><dt>Period</dt><dd>{{ dmy(h.period.start) }} – {{ dmy(h.period.end) }}</dd></div>
+      {% if stock %}
+      <div><dt>Level at start</dt><dd>{% if h.level_at_start is not none %}{{ h.level_at_start | num }} {{ c.unit }}{% else %}–{% endif %}</dd></div>
+      <div><dt>Level at end</dt><dd>{% if h.level_at_end is not none %}{{ h.level_at_end | num }} {{ c.unit }}{% else %}–{% endif %}</dd></div>
+      {% endif %}
+      <div><dt>Used</dt><dd>{{ h.used | num }} {{ c.unit }}</dd></div>
+      <div><dt>Added</dt><dd>{{ h.added | num }} {{ c.unit }}</dd></div>
+      <div><dt>Entries</dt><dd>{{ h.entries }}{% if h.corrections %} ({{ h.corrections }} correction{{ "s" if h.corrections != 1 }}){% endif %}</dd></div>
+    </dl>
+
+    {% set ch = h.chart %}
+    {% set per = "week" if h.weekly else "day" %}
+    <figure class="history-chart">
+      <figcaption class="small muted">{{ (en.HISTORY_CHART_LEVEL if stock else en.HISTORY_CHART_USE).format(unit_of_time=per) }} ({{ c.unit }})</figcaption>
+      {% if ch.empty %}
+        <span class="empty">{{ en.HISTORY_EMPTY }}</span>
+      {% else %}
+      <svg viewBox="0 0 {{ ch.width }} {{ ch.height }}" role="img" aria-label="{{ (en.HISTORY_CHART_LEVEL if stock else en.HISTORY_CHART_USE).format(unit_of_time=per) }}" xmlns="http://www.w3.org/2000/svg">
+        {% for t in ch.ticks %}
+          <line class="grid" x1="{{ ch.left }}" x2="{{ ch.right }}" y1="{{ t.y }}" y2="{{ t.y }}"/>
+          <text class="axis" x="{{ ch.left - 6 }}" y="{{ t.y + 4 }}" text-anchor="end">{{ t.label | num }}</text>
+        {% endfor %}
+        {% for l in ch.labels %}
+          <text class="axis" x="{{ l.x }}" y="{{ ch.bottom + 18 }}" text-anchor="middle">{{ l.label.day }} {{ l.label.strftime("%b") }}</text>
+        {% endfor %}
+        {% if ch.threshold is not none %}
+          <line class="threshold" x1="{{ ch.left }}" x2="{{ ch.right }}" y1="{{ ch.threshold }}" y2="{{ ch.threshold }}"><title>Warn below {{ c.shortage_threshold | num }} {{ c.unit }}</title></line>
+        {% endif %}
+        {% if stock %}
+          <polyline class="level" points="{{ ch.line }}"/>
+          {% for p in ch.points %}
+            <circle class="dot" cx="{{ p.x }}" cy="{{ p.y }}" r="3"><title>{{ dmy(p.bucket.start) }}: {{ p.bucket.level | num }} {{ c.unit }}</title></circle>
+          {% endfor %}
+        {% else %}
+          {% for b in ch.bars %}
+            <rect class="bar" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}"><title>{{ dmy(b.bucket.start) }}: {{ b.bucket.used | num }} {{ c.unit }} used</title></rect>
+          {% endfor %}
+        {% endif %}
+        <line class="base" x1="{{ ch.left }}" x2="{{ ch.right }}" y1="{{ ch.bottom }}" y2="{{ ch.bottom }}"/>
+      </svg>
+      {% endif %}
+    </figure>
+
+    {% if h.rows %}
+    <div class="table-wrap"><table class="history-rows">
+      <thead><tr><th>When</th><th>Type</th><th class="amt">Amount</th><th class="amt">Counts</th>{% if stock %}<th class="amt">Level after</th>{% endif %}<th>Member</th><th>Via</th><th>Note</th></tr></thead>
+      <tbody>
+      {% for r in h.rows %}
+        {% set e = r.entry %}
+        <tr class="{{ 'fix' if r.is_correction }} {{ 'undone' if r.status == 'undone' }}">
+          <td title="Logged {{ e.created_at | stamp }}">{{ e.occurred_at | stamp }}</td>
+          <td>{% if r.is_correction %}↳ {{ en.HISTORY_TYPES.correction }} of #{{ e.corrects_id }}{% else %}{{ en.HISTORY_TYPES.get(e.entry_type, e.entry_type) }} <span class="mono muted">#{{ e.id }}</span>{% endif %}</td>
+          <td class="amt">{% if e.void %}undo{% else %}{{ e.amount | num }}{% endif %}</td>
+          <td class="amt">{% if r.counted is not none %}{{ r.counted | num }}{% if r.status != "counted" %} <span class="st {{ 'off' if r.status == 'undone' else 'warn' }}">{{ en.HISTORY_STATUS[r.status] }}</span>{% endif %}{% endif %}</td>
+          {% if stock %}<td class="amt">{% if r.level_after is not none %}{{ r.level_after | num }}{% endif %}</td>{% endif %}
+          <td>{{ short_name(e.member) }}</td>
+          <td>{{ e.channel }}</td>
+          <td>{{ e.note or "" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+      <span class="empty">{{ en.HISTORY_EMPTY }}</span>
+    {% endif %}
+    <span class="small muted">{{ en.HISTORY_CSV_NOTE }}</span>
+  </section>
+{% endblock %}

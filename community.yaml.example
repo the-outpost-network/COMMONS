@@ -1,0 +1,273 @@
+# COMMONS community configuration (seed).
+#
+# `make init` copies this file to community.yaml (git-ignored). The app reads
+# community.yaml once, on first start, to seed the database. After that, admins
+# change categories, bookable things, roles and rules in the web UI, and every change is
+# written to the decision log. Editing this file later does not change a running
+# instance.
+#
+# No secrets belong here. Values marked DRAFT still need confirmation.
+
+community:
+  name: The Outpost
+  timezone: Europe/Stockholm
+
+roles:
+  - slug: member
+    name: Member
+  - slug: board
+    name: Board
+  - slug: admin
+    name: Admin
+
+# Resources the community keeps track of. Seeded once; after that admins manage
+# them under Community settings -> Resources.
+#   slug:     fixed id used by chat and code; can't be changed later
+#   kind:     "stock" = a level that is read and topped up (tank, woodshed);
+#             "flow"  = only use and add events, no level readings
+#   shortage_threshold: warn the community below this level (optional)
+#   capacity: a full tank / woodshed, for the level bar (optional)
+#   aliases:  other words members use in chat; each word may mean one resource only
+resource_categories:
+  - slug: water
+    name: Water
+    unit: l
+    kind: stock
+    shortage_threshold: 1000      # DRAFT
+    capacity: 3000                # DRAFT
+    forecast_horizon_days: 30     # DRAFT
+    aliases: [tank, water tank, drinking water]   # DRAFT
+  - slug: firewood
+    name: Firewood
+    unit: m³
+    kind: stock
+    shortage_threshold: 2         # DRAFT
+    forecast_horizon_days: 60     # DRAFT
+    aliases: [wood, logs, woodshed]               # DRAFT
+
+# Things members book (spaces, vehicles, tools). Seeded once; after that admins manage them under
+# Community settings -> Bookable.
+#   type:     "space" (theatre, workshop), "vehicle" (the car: a booking can say
+#             where to) or "tool" (the saw)
+#   location: where it is (optional)
+# The id is made from the name. (An older file's `spaces:` list still works:
+# each entry becomes a thing of type "space".)
+bookable:                    # DRAFT
+  - {name: Theatre, type: space}
+  - {name: Workshop, type: space}
+  - {name: Car, type: vehicle, location: the barn}
+  - {name: Saw, type: tool, location: the workshop}
+
+# How bookings behave. Every booking can have an end, but it is only a hint.
+bookings:
+  open_booking_hours: 2           # a booking without an end blocks the thing this long
+  reminder_every_hours: 2         # remind the holder this often once due
+  reminders_stop_after_hours: 24  # then stop and tell the admins
+  quiet_hours_start: "22:00"      # no messages from COMMONS at night (in quotes)
+  quiet_hours_end: "08:00"
+
+# Votes (Votes PRD v0.1, values are proposals for the board to confirm). Any member
+# proposes; the vote type sets how long voting runs and when counts are shown.
+# Ballots are secret: the log records who voted, never what they chose.
+voting:
+  quorum_pct: null                # DRAFT: no quorum, every vote counts
+  threshold_pct: 50               # DRAFT: default; an option wins with MORE than 50% of votes cast.
+                                  # A proposer may set a higher share per vote, never below 50.
+  extra_options: 2                # answers besides the first two (e.g. "Wait until Monday")
+  currency: SEK                   # DRAFT
+  reminder_times: ["09:00", "18:00"]   # DRAFT: reminders to non-voters on the closing day
+  reminder_window: ["08:00", "22:00"]  # DRAFT: reminders are never sent outside these hours
+  types:
+    - slug: spending
+      name: Spending / purchases
+      duration_days: 1            # DRAFT
+      results: live               # anonymous counts while voting
+      amount: true                # proposer gives an amount or "amount unknown"
+    - slug: rules
+      name: Rules & thresholds
+      duration_days: 3            # DRAFT
+      results: live
+    - slug: events
+      name: Use of space / events
+      duration_days: 2            # DRAFT
+      results: after_close        # only turnout until the vote closes
+
+# Badges reward taking part, never using more. Each rule counts one thing and
+# is earned at `min`:
+#   ledger_entries        readings, uses and adds logged by hand (not undone)
+#   ledger_days_in_a_row  longest run of days in a row with a logged entry
+#   bookings_honoured     bookings kept: a space's time is over, a vehicle or
+#                         tool given back by its end
+#   votes                 proposals voted on (not counted until voting is built)
+# Members see theirs on "My contributions" (/me) and by asking the bot "my badges".
+# After the first start: `docker compose exec app python -m app.cli set-badges`.
+badges:
+  - slug: first-log
+    name: First log
+    description: Logged a first resource reading.
+    rule: {count: ledger_entries, min: 1}
+  - slug: regular
+    name: Regular
+    description: Logged ten entries.
+    rule: {count: ledger_entries, min: 10}
+  - slug: week-of-logs
+    name: A week of logs
+    description: Logged something seven days in a row.
+    rule: {count: ledger_days_in_a_row, min: 7}
+  - slug: good-borrower
+    name: Good borrower
+    description: Kept a first booking as agreed.
+    rule: {count: bookings_honoured, min: 1}
+  - slug: voter
+    name: Voter
+    description: Voted on five proposals.
+    rule: {count: votes, min: 5}
+
+# What members should know about the place, summarised from "The Outpost
+# Guides" in Notion (Nov 2026). The chat assistant reads all of it with every
+# message, so keep it short: at most 8,000 characters in total, 1,500 a topic.
+# Only facts here; the model answers from them and says so when it doesn't know.
+guide:
+  - title: About the Outpost
+    text: >-
+      The Outpost is at Skräppbo Skola, 739 93 Riddarhyttan, Sweden. It is a
+      living community project, not a vacation house or an Airbnb: everyone who
+      stays contributes within their limits (cook, clean a bathroom, fix
+      something, do a trash trip). Every stay needs a confirmation from the core
+      team first. Bring your own towels (there are no spare ones) and your own
+      groceries. On arrival, check in with the people living here and ask what
+      your contribution will be, check the whiteboard for tasks (urgent ones
+      too) and join the cooking and cleaning rotations (kitchen, living room,
+      laundry, bathroom).
+  - title: House rules and night
+    text: >-
+      Quiet by 22:00 around the glamping tents and main areas: no loud talking
+      and no music after 22:00 unless agreed otherwise. Take out the trash when
+      it is full and separate waste. Keep the living room tidy and don't leave
+      your things there; staying 3 days or more, you can claim a shelf in the
+      closet at the back if there is space. At night all doors are closed and
+      all lights off; the last ones up take care of it.
+  - title: Meals and kitchen
+    text: >-
+      Lunch is around 13:00 and dinner around 19:00. Say whether you cook for
+      the group or keep to a smaller group for a meal; both are fine. Clean up
+      right after cooking: dishes, sink, wipe or mop the floor, and take out
+      the trash if you made a lot. Food in storage is not automatically free:
+      ask the people living here. Buy your own food, check the fridges before
+      shopping and use up leftovers. Clean the microwave after using it.
+  - title: Dishwasher
+    text: >-
+      Put your used dishes into the dishwasher. To run it, press the round
+      Program button until the cup light (the everyday program) is on; the
+      button with the thermometer below it sets the temperature (in the guide's
+      photos its half of the ring is lit). Then press Start/Stop. A pink light
+      on the ring around Start/Stop, next to the play sign, means it is
+      running; "Klart" means done. The other programs are the pot (intensive),
+      the wine glass (delicate) and the spray symbol (rinse only). The kitchen
+      crew fills and empties it whenever it is ready and puts the clean plates,
+      cups and cutlery into the cupboard in the living room.
+  - title: Kitchen crew
+    text: >-
+      Sweep or vacuum the whole kitchen floor daily, ideally in the evening.
+      Mop weekly: a bucket with lots of water, about a quarter glass of vinegar
+      and one bottle cap of all-purpose cleaner, a fresh mop cover from the
+      cleaning closet, and wipe away the dark spots. Clean the stovetop daily
+      after cooking with oven or grill cleaner and steel wool until no burn
+      marks are left. Clean the work surfaces twice a day (morning and after
+      cooking). In the evening wipe the coffee machine area and put the coffee
+      grounds in the organic waste. Empty the organic waste every evening (the
+      cleaning guide says into the forest, the old paper bag into general trash,
+      then a new paper bag). Check both fridges daily for leftovers to use up.
+  - title: Living room and storage
+    text: >-
+      Check the laundry table daily and move your things into your drawer. The
+      living room crew tidies once or twice a day (fold blankets over the couch
+      and chairs, chairs back to the tables, dishes to the kitchen), wipes the
+      surfaces and vacuums the living room, the pantry (Speis) and the cleaning
+      closet every 3 days, and brings fire starters and short logs from the
+      boiler room daily. Close all food storage lids tightly: there are mice.
+      Full trash goes to the trash collection space in Hall A (cardboard boxes
+      and the big black bins). Add cleaning supplies and paper towels to the
+      shopping list before they run out.
+  - title: Laundry
+    text: >-
+      Put laundry to wash into the light or dark basket. Clothes that can't go
+      in the dryer: wash them yourself and tell the laundry crew. The crew
+      washes when a basket is full, dries, and puts dry laundry on the laundry
+      table in the living room. Bed sheets, pillows and other bedding go
+      upstairs in the school (clear boxes), cleaning rags to the cleaning closet
+      in the school, and clean towels for now on the laundry table in the
+      school.
+  - title: Bathrooms and toilets
+    text: >-
+      No outside shoes in the bathroom; in the toilet-only room wear the shoes
+      provided there and leave them there. After showering, leave the door open
+      so the humidity escapes, hang your towel outside to dry and don't leave
+      things behind. Refill toilet paper when a roll runs out and use the toilet
+      brush when needed. The bathroom crew cleans sinks and toilets daily, does
+      a deep clean of the toilets (and refills the toilet blocks), surfaces,
+      floors and hand towels every 3 days, washes the shower curtain every 2
+      weeks and keeps toilet paper in stock. Cleaning supplies are next to the
+      washing machine.
+  - title: Sauna
+    text: >-
+      No skin on the wood: always sit on your own towel. Bring your own wood; if
+      you use the Outpost's pre-cut wood, cut replacement wood yourself and
+      refill the stock. The wood is at the back of Hall B, and the cutting
+      machines are outside.
+  - title: Trash, food scraps and packaging
+    text: >-
+      Nothing is picked up: we drive our waste away ourselves. Food scraps
+      (bio) and general trash go into the containers at the Outpost parking,
+      next to the small roundabout, and nothing else. Glass (clear and
+      coloured), paper bags and milk cartons, plastic and metal packaging, and
+      newspapers go to the recycling station in Riddarhyttan at the petrol
+      station, open 24/7. Cardboard does not go there: cardboard goes to the
+      Återbruk recycling centre. When in doubt, ask before you throw something
+      away.
+  - title: Cardboard, furniture, electronics and construction waste
+    text: >-
+      Cardboard and cardboard boxes, styrofoam, wood, scrap metal, electronics,
+      furniture (also broken chairs) and construction waste go to a VafabMiljö
+      Återbruk (staffed recycling centre), never to the recycling station or the
+      parking containers. Skinnskatteberg: Mon, Tue, Thu 10-14 and 15-19, Sat
+      10-15. Fagersta: Mon-Thu 7-19, Fri 7-16, Sat 10-15. Norberg: Sundays
+      10-15. Hours change on Swedish holidays (vafabmiljo.se). Staff don't help
+      unloading, so bring a second pair of hands.
+  - title: Pant (deposit bottles and cans)
+    text: >-
+      Cans and PET bottles with the pant symbol carry a deposit of 1-3 kr each:
+      never put them in the trash. Collect them and return them for the money:
+      small amounts to Handlar'n in Riddarhyttan (Mon-Fri 10-18:30, Sat-Sun
+      10-15), big bags to ICA Nära Berghallen in Skinnskatteberg (daily
+      7:30-21), whose machine takes a whole bag at once.
+  - title: Before you leave
+    text: >-
+      Leave the place as you'd like to find it. Strip your bed and wash the
+      sheets (or ask someone explicitly), then store them folded upstairs in the
+      school. Drive all trash from the storage room to the collection points.
+      Empty your food from the fridge or hand it over. If you slept in a
+      glamping tent, clean it (there is electricity and a vacuum cleaner) and
+      close it against rain. If you slept in the school, vacuum the floor and
+      staircase and put duvets and pillows back in the storage boxes. Tidy the
+      kitchen and living room, fold blankets, wipe surfaces, vacuum. Without a
+      cleaning shift during your stay, clean the toilets, floors, surfaces and
+      mirror you used. Clean the gym surfaces and mats if you used it.
+  - title: Closing the season
+    text: >-
+      Move the stage to the back and roll the billiard table to the entrance;
+      store the rugs. Bring everything from outside into Hall C (light sticks,
+      string lights, chairs, beds, camping tents and gear) and take down and
+      store the glamping tents and hammocks. Remove the outside power cables.
+      Store the Soundboks and its batteries in the school. Empty and switch off
+      the fridge and freezer. Cover the couches. Lock the school and put the key
+      in the key box. Turn the electricity back down. Wash all blankets and
+      store the clean duvets and bedding.
+  - title: Getting here
+    text: >-
+      The nearest airport is Stockholm. Easiest: rent a car (around 40 euros a
+      day, cheaper when shared; GoMore has private rentals). Or take the Vy
+      bus4you bus from Stockholm airport to Västerås (about 1.5 hours, direction
+      Karlstad) and get picked up there (about 1 more hour by car), which must
+      be arranged with the Outpost beforehand. Closer bus stations are
+      Skinnskatteberg, Fagersta and Riddarhyttan.

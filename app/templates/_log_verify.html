@@ -1,0 +1,30 @@
+{# The Verify chain result; /log includes it and the button swaps it in again. #}
+<section class="card tight" id="verification" aria-label="{{ en.LOG_CHAIN_LABEL }}">
+  {% if result.ok %}
+    <div class="ok-box" role="status">
+      {% if result.head_seq %}{{ en.LOG_VERIFIED.format(count=result.head_seq) }}{% else %}{{ en.LOG_VERIFIED_EMPTY }}{% endif %}
+      {% if result.tallies %} {{ en.LOG_RECOUNTED.format(count=result.tallies) }}{% endif %}
+    </div>
+  {% else %}
+    <div class="alert-box" role="alert"><span aria-hidden="true">!</span>
+      <span>{{ en.LOG_BROKEN.format(seq=result.failed_seq, reason=result.reason) }}</span></div>
+  {% endif %}
+  <form method="get" action="/log" class="actions">
+    <button class="btn secondary sm" type="submit"
+            hx-get="/api/log/verify" hx-target="#verification" hx-swap="outerHTML">{{ en.LOG_VERIFY_BUTTON }}</button>
+  </form>
+  {% if result.head_seq or keys %}
+    <details class="tech">
+      <summary>{{ en.LOG_TECH }}</summary>
+      <div class="stack-2">
+      {% if result.head_seq %}
+        <span class="small">{{ en.LOG_HEAD.format(seq=result.head_seq) }} <code class="mono break">{{ result.head_hash }}</code></span>
+      {% endif %}
+      {% for k in keys %}
+        <span class="small">{{ en.LOG_KEYS }} <code class="mono">{{ k.key_id }}</code>{% if k.retired_at %} (retired){% endif %}:
+          <code class="mono break">{{ k.public_key }}</code></span>
+      {% endfor %}
+      </div>
+    </details>
+  {% endif %}
+</section>

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><a class="small" href="/proposals">&larr; {{ en.VOTES_BACK }}</a>
+      <h2 class="page-title">{{ en.PROPOSAL_FORM_TITLE }}</h2>
+      <span class="fs-16">{{ en.PROPOSAL_FORM_INTRO }}</span></div>
+  </section>
+  {% if error %}<div class="alert-box" role="alert"><span aria-hidden="true">!</span><span>{{ error }}</span></div>{% endif %}
+  {% if rules %}
+  <section class="card draft" aria-label="{{ en.PROPOSAL_FORM_TITLE }}">
+    <div class="sect-h"><span class="pill dark">{{ en.PROPOSAL_DRAFT }}</span>
+      <span class="small muted">{{ en.PROPOSAL_NOT_YET_PUBLISHED }}</span></div>
+    <form class="form" method="post" action="/proposals" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <div class="form-grid">
+        <label for="f-type">{{ en.PROPOSAL_FIELDS.vote_type[0] }}</label>
+        <div class="field"><select class="inp" id="f-type" name="vote_type">
+            {% for t in rules.types %}<option value="{{ t.slug }}" {{ "selected" if form.vote_type == t.slug }}>{{ t.name }}</option>{% endfor %}
+          </select>
+          <span class="hint">{% for t in rules.types %}{{ t.name }}: {{ en.VOTES_DAYS.format(n=t.duration_days) if t.duration_days != 1 else en.VOTES_ONE_DAY }}, {{ en.VOTES_COUNTS[t.results] | lower }}{{ "" if loop.last else " · " }}{% endfor %}.
+            {{ en.PROPOSAL_FIELDS.vote_type[1] }}</span></div>
+
+        <label for="f-question">{{ en.PROPOSAL_FIELDS.question[0] }}</label>
+        <div class="field"><input class="inp wide" id="f-question" name="question" value="{{ form.question }}" maxlength="{{ limits.question }}" autocomplete="off" required>
+          <span class="hint">{{ en.PROPOSAL_FIELDS.question[1].format(n=limits.question) }}</span></div>
+
+        <label for="f-why">{{ en.PROPOSAL_FIELDS.why[0] }}</label>
+        <div class="field"><textarea class="inp" id="f-why" name="why" rows="3" maxlength="{{ limits.why }}">{{ form.why }}</textarea>
+          <span class="hint">{{ en.PROPOSAL_FIELDS.why[1] }}</span></div>
+
+        <span class="lab">{{ en.PROPOSAL_FIELDS.options[0] }}</span>
+        <div class="field">
+          <div class="actions">
+            {% for label in form.options %}
+              <input class="inp opt-inp" name="option_{{ loop.index }}" value="{{ label }}" maxlength="{{ limits.option }}"
+                aria-label="{{ en.PROPOSAL_OPTION_N.format(n=loop.index) }}" placeholder="{{ en.PROPOSAL_OPTION_N.format(n=loop.index) if loop.index <= 2 else en.PROPOSAL_OPTION_OPTIONAL }}" autocomplete="off">
+            {% endfor %}
+            <span class="pill outline">+ {{ en.VOTES_ABSTAIN }}</span>
+          </div>
+          <span class="hint">{{ en.PROPOSAL_FIELDS.options[1].format(n=form.options | length - 2) }}</span></div>
+
+        {% set amount_types = rules.types | selectattr("amount") | map(attribute="name") | list %}
+        {% if amount_types %}
+          <span class="lab">{{ en.PROPOSAL_FIELDS.amount[0] }}</span>
+          <div class="field">
+            <div class="row-10 wrap">
+              <label class="row-8"><input type="checkbox" name="amount_unknown" value="1" {{ "checked" if form.amount_unknown }}> {{ en.VOTES_AMOUNT_UNKNOWN }}</label>
+              <span>{{ en.PROPOSAL_OR }}</span>
+              <span class="row-8"><input class="inp short" id="f-amount" name="amount" value="{{ form.amount }}" inputmode="decimal" aria-label="{{ en.PROPOSAL_FIELDS.amount[0] }} ({{ rules.currency }})"> {{ rules.currency }}</span>
+            </div>
+            <span class="hint">{{ en.PROPOSAL_FIELDS.amount[1].format(types=amount_types | join(", ")) }}</span></div>
+        {% endif %}
+
+        <label for="f-threshold">{{ en.PROPOSAL_FIELDS.threshold_pct[0] }}</label>
+        <div class="field">
+          <span class="row-8">{{ en.PROPOSAL_MORE_THAN }}
+            <input class="inp short" id="f-threshold" name="threshold_pct" value="{{ form.threshold_pct }}" type="number"
+              min="{{ limits.threshold_min }}" max="{{ limits.threshold_max - 0.01 }}" step="0.01" inputmode="decimal" required> %</span>
+          <span class="hint">{{ en.PROPOSAL_FIELDS.threshold_pct[1].format(default=pct(rules.threshold_pct), min=limits.threshold_min ~ " %") }}</span></div>
+
+        <span class="lab">{{ en.PROPOSAL_ANONYMOUS }}</span>
+        <div class="field">
+          <label class="row-8"><input type="checkbox" name="anonymous" value="1" {{ "checked" if form.anonymous }}> {{ en.PROPOSAL_ANONYMOUS_LABEL }}</label>
+          <span class="hint">{{ en.PROPOSAL_ANONYMOUS_HINT }}</span></div>
+
+        <span class="lab">{{ en.PROPOSAL_BALLOTS }}</span>
+        <span class="field pt-10">{{ en.PROPOSAL_BALLOTS_TEXT }}</span>
+      </div>
+      <div class="actions">
+        <button class="btn dark" type="submit">{{ en.PROPOSAL_PUBLISH }}</button>
+        <a class="btn line" href="/proposals">Cancel</a>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+{% endblock %}

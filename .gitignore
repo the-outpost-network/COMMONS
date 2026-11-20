@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+secrets/
+community.yaml
+demo-members.json
+data/
+models/
+*.gguf
+*.pem
+*.key
+keys/
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Exported Caddy root certificate (public, but distribute deliberately)
+commons-root.crt
+
+# macOS Finder metadata
+.DS_Store

@@ -1,0 +1,65 @@
+{#
+Copyright 2025 New Vector Ltd.
+
+SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial
+Please see LICENSE files in the repository root for full details.
+
+Modified for COMMONS (deploy/mas/Dockerfile): when the person came through a
+COMMONS invite link, COMMONS left the invite code in the `commons_invite`
+cookie; the script below fills it in and submits this step, so they never
+have to copy or paste it. Without the cookie the page works as before.
+-#}
+
+{% extends "base.html" %}
+
+{% block content %}
+  <header class="page-heading">
+    <div class="icon">
+      {{ icon.key_solid() }}
+    </div>
+    <div class="header">
+      <h1 class="title">{{ _("mas.registration_token.headline") }}</h1>
+      <p class="text">{{ _("mas.registration_token.description") }}</p>
+    </div>
+  </header>
+
+  <div class="cpd-form-root">
+    <form method="POST" class="cpd-form-root" id="registration-token-form">
+      {% if form.errors is not empty %}
+        {% for error in form.errors %}
+          <div class="text-critical font-medium">
+            {{ errors.form_error_message(error=error) }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <input type="hidden" name="csrf" value="{{ csrf_token }}" />
+
+      {% call(f) field.field(label=_("mas.registration_token.field"), name="token", form_state=form, class="mb-4") %}
+        <input {{ field.attributes(f) }}
+          id="cpd-text-control"
+          type="text"
+          class="cpd-text-control"
+          required />
+      {% endcall %}
+
+      {{ button.button(text=_("action.continue")) }}
+    </form>
+  </div>
+
+  <script>
+    (function () {
+      var match = document.cookie.match(/(?:^|; )commons_invite=([A-Z0-9-]{24})(?:;|$)/);
+      var form = document.getElementById("registration-token-form");
+      // MAS' field macro sets the input's id itself, so find it by name.
+      var input = form && form.querySelector('input[name="token"]');
+      if (!match || !input || input.value) return;
+      // Use the code once: delete the cookie before submitting, so a refused
+      // code shows MAS' error message instead of being submitted again.
+      var parent = location.hostname.replace(/^[^.]+\./, "");
+      document.cookie = "commons_invite=; Max-Age=0; Path=/; Domain=" + parent + "; Secure; SameSite=Lax";
+      input.value = match[1];
+      form.submit();
+    })();
+  </script>
+{% endblock content %}

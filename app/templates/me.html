@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+  <section class="page-head">
+    <div><h2 class="page-title">{{ en.ME_TITLE }}</h2>
+      <span class="fs-16">{{ en.ME_INTRO }}</span></div>
+    <a class="btn sm secondary" href="/me/export.json" download>{{ en.ME_EXPORT }}</a>
+  </section>
+
+  <section class="card" aria-labelledby="h-badges">
+    <div class="sect-h"><h2 id="h-badges">{{ en.ME_BADGES }}</h2></div>
+    {% if s.badges %}
+      <ul class="badges">
+        {% for b in s.badges %}
+          <li class="badge {{ 'earned' if b.earned else 'open' }}">
+            <span class="badge-mark" aria-hidden="true">{{ '★' if b.earned else '☆' }}</span>
+            <span class="stack-2">
+              <b>{{ b.rule.name }}</b>
+              {% if b.rule.description %}<span class="small">{{ b.rule.description }}</span>{% endif %}
+              {% if b.earned %}
+                <span class="small muted">{{ en.ME_BADGE_EARNED.format(when=day(b.earned_at)) }}</span>
+              {% elif not b.counted %}
+                <span class="small muted">{{ en.ME_BADGE_NOT_COUNTED }}</span>
+              {% else %}
+                <progress max="{{ b.target }}" value="{{ b.value }}" aria-label="{{ b.rule.name }}"></progress>
+                <span class="small muted">{{ en.ME_BADGE_PROGRESS.format(value=b.value, target=b.target) }}</span>
+              {% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+      <span class="small muted">{{ en.ME_BADGES_HINT }}</span>
+    {% else %}
+      <span class="empty">{{ en.ME_NO_BADGES }}</span>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="h-entries">
+    <div class="sect-h"><h2 id="h-entries">{{ en.ME_ENTRIES }}</h2>
+      <span class="tag">{{ en.ME_ENTRIES_TOTAL.format(count=s.entries) }}</span></div>
+    {% if s.recent_entries %}
+      <ul class="stack-2">
+        {% for sh in s.shares %}
+          <li>
+            <b>{{ sh.category.name }}</b>: {{ en.ME_ENTRIES_TOTAL.format(count=sh.mine) }}.
+            {% if sh.mine_recent %}{{ en.ME_SHARE.format(mine=sh.mine_recent, all=sh.all_recent, name=sh.category.name | lower) }}
+            {% else %}{{ en.ME_SHARE_NONE.format(name=sh.category.name | lower) }}{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <h3>{{ en.ME_RECENT }}</h3>
+      <div class="table-wrap"><table class="stack">
+        <thead><tr><th>{{ en.ME_COL_WHEN }}</th><th>{{ en.ME_COL_WHAT }}</th></tr></thead>
+        <tbody>
+        {% for e in s.recent_entries %}
+          <tr>
+            <td data-label="{{ en.ME_COL_WHEN }}" class="nowrap">{{ loc(e.occurred_at) }}</td>
+            <td data-label="{{ en.ME_COL_WHAT }}">
+              {{ e.category.name }}: {{ en.ME_ENTRY_TYPES.get(e.entry_type, e.entry_type) }} {{ '%g' | format(e.amount) }} {{ e.category.unit }}
+              <span class="small muted">#{{ e.id }}</span>
+              {% if e.id in s.undone_ids %}<span class="tag">{{ en.ME_UNDONE }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <span class="empty">{{ en.ME_NO_ENTRIES }}</span>
+    {% endif %}
+  </section>
+
+  <section class="card" aria-labelledby="h-bookings">
+    <div class="sect-h"><h2 id="h-bookings">{{ en.ME_BOOKINGS }}</h2>
+      <span class="tag">{{ en.ME_BOOKINGS_TOTAL.format(count=s.bookings, kept=s.bookings_honoured) }}</span></div>
+    {% if s.recent_bookings %}
+      <div class="table-wrap"><table class="stack">
+        <thead><tr><th>{{ en.ME_COL_WHEN }}</th><th>{{ en.ME_COL_THING }}</th></tr></thead>
+        <tbody>
+        {% for b in s.recent_bookings %}
+          <tr>
+            <td data-label="{{ en.ME_COL_WHEN }}" class="nowrap">{{ loc(b.starts_at) }}{% if b.ends_at %} – {{ loc(b.ends_at) }}{% endif %}</td>
+            <td data-label="{{ en.ME_COL_THING }}">
+              <a href="/calendar/bookings/{{ b.id }}">{{ b.bookable.name }}</a>
+              {% if b.note %}<span class="small muted">{{ b.note }}</span>{% endif %}
+              {% if b.cancelled_at %}<span class="tag">{{ en.ME_BOOKING_CANCELLED }}</span>
+              {% elif b.returned_at %}<span class="small muted">{{ en.ME_BOOKING_RETURNED.format(when=loc(b.returned_at)) }}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <span class="empty">{{ en.ME_NO_BOOKINGS }}</span>
+    {% endif %}
+  </section>
+
+  <section class="card tight" aria-label="{{ en.ME_EXPORT }}">
+    <span>{{ en.ME_EXPORT_HINT }}</span>
+    <span class="actions"><a class="btn sm secondary" href="/me/export.json" download>{{ en.ME_EXPORT }}</a></span>
+  </section>
+{% endblock %}

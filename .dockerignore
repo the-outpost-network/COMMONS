@@ -1,0 +1,19 @@
+# Default-deny: only what the Dockerfile needs goes into the build context.
+*
+!requirements.lock
+!app/
+!bot/
+!migrations/
+!alembic.ini
+
+# Never, even if re-included above by mistake.
+**/.env
+**/.env.*
+**/secrets/
+**/data/
+**/models/
+**/keys/
+**/*.gguf
+**/*.pem
+**/*.key
+**/__pycache__/

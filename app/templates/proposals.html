@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% from "_vote.html" import vote_card, log_link %}
+{% block content %}
+  <section class="page-head">
+    <div><h2 class="page-title">{{ en.VOTES_TITLE }}</h2>
+      <span class="fs-16">{{ en.VOTES_SUMMARY.format(open=open_ | length, eligible=eligible) }}</span></div>
+    <span class="actions">
+      <a class="btn dark" href="/proposals/new">{{ en.VOTES_PROPOSE }}</a>
+      <a class="btn line" href="#how-voting">{{ en.VOTES_HOW }}</a>
+    </span>
+  </section>
+
+  {% if done %}<div class="ok-box" role="status">{{ done }}</div>{% endif %}
+
+  <div class="row">
+    <div class="col-main">
+      <section class="stack-4" id="open-votes" aria-label="{{ en.VOTES_OPEN }}">
+        {% for v in open_ %}{{ vote_card(v, current, "list") }}
+        {% else %}
+          <section class="card"><span class="empty">{{ en.VOTES_NONE_OPEN }} <a class="btn" href="/proposals/new">{{ en.VOTES_PROPOSE }}</a></span></section>
+        {% endfor %}
+      </section>
+
+      <section class="card" id="past-votes" aria-labelledby="h-past">
+        <div class="sect-h"><h2 id="h-past">{{ en.VOTES_PAST }}</h2><span class="small muted">{{ en.VOTES_PAST_HINT }}</span></div>
+        <form class="filters" method="get" action="/proposals#past-votes">
+          <label class="sr" for="f-type">{{ en.VOTES_COL_TYPE }}</label>
+          <select class="sel" id="f-type" name="type">
+            <option value="">{{ en.VOTES_ALL_TYPES }}</option>
+            {% if rules %}{% for t in rules.types %}<option value="{{ t.slug }}" {{ "selected" if filter_type == t.slug }}>{{ t.name }}</option>{% endfor %}{% endif %}
+          </select>
+          <label class="sr" for="f-outcome">{{ en.VOTES_COL_RESULT }}</label>
+          <select class="sel" id="f-outcome" name="outcome">
+            <option value="">{{ en.VOTES_ALL_RESULTS }}</option>
+            {% for o in outcome_filters %}<option value="{{ o }}" {{ "selected" if filter_outcome == o }}>{{ en.VOTES_FILTER[o] }}</option>{% endfor %}
+          </select>
+          <button class="btn line sm" type="submit">{{ en.VOTES_FILTER_GO }}</button>
+          {% if filter_type or filter_outcome %}<a class="small" href="/proposals#past-votes">{{ en.VOTES_FILTER_CLEAR }}</a>{% endif %}
+        </form>
+        {% if past %}
+          <div class="table-wrap"><table class="stack">
+            <thead><tr><th>{{ en.VOTES_COL_CLOSED }}</th><th>{{ en.VOTES_COL_QUESTION }}</th><th>{{ en.VOTES_COL_TYPE }}</th><th>{{ en.VOTES_COL_RESULT }}</th><th>{{ en.VOTES_COL_TURNOUT }}</th><th>{{ en.VOTES_COL_LOG }}</th></tr></thead>
+            <tbody>
+            {% for v in past %}
+              {% set seq = v.log_seq.get("proposal.closed") or v.log_seq.get("proposal.cancelled") %}
+              <tr>
+                <td data-label="{{ en.VOTES_COL_CLOSED }}" class="nowrap muted">{{ v.p.ended_at | local }}</td>
+                <td data-label="{{ en.VOTES_COL_QUESTION }}"><a href="/proposals/{{ v.p.id }}">{{ v.p.question }}</a></td>
+                <td data-label="{{ en.VOTES_COL_TYPE }}"><span class="pill type-{{ v.tint }}">{{ v.type_name }}</span></td>
+                <td data-label="{{ en.VOTES_COL_RESULT }}"><span class="pill result-{{ v.result }}">{{ v.result_text }}</span></td>
+                <td data-label="{{ en.VOTES_COL_TURNOUT }}" class="nowrap">{{ en.VOTES_TURNOUT_OF.format(turnout=v.turnout, eligible=v.eligible) }}</td>
+                <td data-label="{{ en.VOTES_COL_LOG }}">{% if seq %}{{ log_link(seq, "#" ~ seq) }}{% endif %}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table></div>
+        {% else %}
+          <span class="empty">{{ en.VOTES_NONE_PAST_FILTERED if filter_type or filter_outcome else en.VOTES_NONE_PAST }}</span>
+        {% endif %}
+      </section>
+    </div>
+
+    <aside class="col-side">
+      <section class="card" id="how-voting" aria-labelledby="h-how">
+        <h2 id="h-how">{{ en.VOTES_HOW }}</h2>
+        {% if rules %}
+          {% set threshold = pct(rules.threshold_pct) %}
+          <ul class="plain rules">
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_WINS.format(threshold=threshold, min=pct(limits_min)) }}
+              {% if rules.quorum_pct is none %}{{ en.VOTES_HOW_NO_QUORUM }}{% else %}{{ en.VOTES_HOW_QUORUM.format(quorum=pct(rules.quorum_pct)) }}{% endif %}</span></li>
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_ABSTAIN }}</span></li>
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_GIVE_UP }}</span></li>
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_REJECTED }}</span></li>
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_BALLOTS }}</span></li>
+            <li><span class="dot" aria-hidden="true"></span><span>{{ en.VOTES_HOW_ANYONE }}</span></li>
+          </ul>
+          <table class="fs-14">
+            <thead><tr><th>{{ en.VOTES_COL_TYPE }}</th><th>{{ en.VOTES_COL_VOTING }}</th><th>{{ en.VOTES_COL_COUNTS }}</th></tr></thead>
+            <tbody>
+            {% for t in rules.types %}
+              <tr><td>{{ t.name }}</td><td class="nowrap">{{ en.VOTES_DAYS.format(n=t.duration_days) if t.duration_days != 1 else en.VOTES_ONE_DAY }}</td>
+                <td>{{ en.VOTES_COUNTS[t.results] }}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          <span class="small muted">{{ en.VOTES_HOW_CONFIG }}</span>
+        {% else %}
+          <span class="empty">{{ en.VOTES_NOT_CONFIGURED }}</span>
+        {% endif %}
+      </section>
+    </aside>
+  </div>
+  <span class="small muted">{{ en.PROPOSALS_TZ_NOTE.format(tz=tz) }}</span>
+{% endblock %}

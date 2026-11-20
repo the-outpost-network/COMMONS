@@ -1,0 +1,41 @@
+# Matrix Authentication Service trial config (non-secret part).
+# scripts/synapse_trial_init.py merges this with generated secrets into
+# secrets/matrix/mas.yaml, which is what the container reads.
+http:
+  public_base: "https://auth.commons.theoutpost.network/"
+  issuer: "https://auth.commons.theoutpost.network/"
+  listeners:
+    - name: web
+      resources:
+        - name: discovery
+        - name: human
+        - name: oauth
+        - name: compat
+        - name: graphql
+        - name: assets
+      binds:
+        - address: "[::]:8080"
+  trusted_proxies: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8]
+
+database:
+  host: postgres
+  port: 5432
+  username: matrix
+  database: mas
+
+matrix:
+  kind: synapse
+  homeserver: "commons.theoutpost.network"
+  endpoint: "http://matrix:8008/"
+
+email:
+  transport: blackhole
+
+passwords:
+  enabled: true
+  schemes:
+    - version: 1
+      algorithm: argon2id
+  minimum_complexity: 3
+
+# Account rules (sign-up with registration tokens) live in mas-accounts.yaml.

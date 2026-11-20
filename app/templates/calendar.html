@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% macro url(view=v.kind, day=v.anchor, flt=v.flt.query()) -%}
+  /calendar?view={{ view }}&day={{ day.isoformat() }}{% for k, val in flt.items() %}&{{ k }}={{ val | urlencode }}{% endfor %}
+{%- endmacro %}
+{# One booking. Month and week grids: two fixed lines, each ending in an
+   ellipsis (time and thing / booker → destination); the phone list puts it on
+   one line. The full text is in the title and the accessible name. #}
+{% macro item(i, full=false) -%}
+  {% set b = i.booking %}
+  {# Your own bookings say "you" where the booker's name goes. #}
+  {% set mine = b.member_id == current.member.id %}
+  {% set booker = en.CAL_YOU if mine else who(b.member) %}
+  {# A real end only: given back, or an end that isn't overdue. An open booking's
+     hold window (blocks_until) is not a return time, so it never shows as one. #}
+  {% set has_end = not i.holding and (b.returned_at or b.ends_at) %}
+  {% set s, e = i.start.strftime("%H:%M"), i.end.strftime("%H:%M") %}
+  {% set time -%}
+    {%- if i.starts_today -%}
+      {%- if not full -%}{{ s }}
+      {%- elif has_end and i.ends_today -%}{{ s }}–{{ e }}
+      {%- else -%}{{ en.CAL_FROM.format(time=s) }}{%- endif -%}
+    {%- elif has_end and i.ends_today -%}{{ en.CAL_UNTIL.format(time=e) }}
+    {%- else -%}{{ en.CAL_ALL_DAY }}{%- endif -%}
+  {%- endset %}
+  {# The grids get a short tag; the full sentence is in the label and on the booking page. #}
+  {% set status %}{% if i.holding %}{% if i.late %}{{ en.CAL_LATE.format(when=loc(b.ends_at)) }}{% else %}{{ en.CAL_OPEN_END }}{% endif %}{% endif %}{% endset %}
+  {% set tag %}{% if i.holding %}{% if i.late %}{{ en.CAL_LATE_SHORT }}{% else %}{{ en.CAL_OPEN_END }}{% endif %}{% endif %}{% endset %}
+  {% set label %}{{ time }} {{ b.bookable.name }}, {{ booker }}{% if b.destination %} → {{ b.destination }}{% endif %}{% if full and b.note %}, {{ b.note }}{% endif %}{% if status %} ({{ status }}){% endif %}{% endset %}
+  <a class="cal-item {{ b.bookable.type }}{{ ' holding' if i.holding }}{{ ' late' if i.late }}{{ ' mine' if mine }}" href="/calendar/bookings/{{ b.id }}" title="{{ label }}" aria-label="{{ label }}">
+    <span class="l1"><span class="t">{{ time }}</span> <b>{{ b.bookable.name }}</b></span>
+    <span class="l2"><span class="by"><span class="who"><span class="sep" aria-hidden="true">· </span>{{ booker }}</span>{% if b.destination %} <span class="dest">→ {{ b.destination }}</span>{% endif %}</span>{% if tag %}<span class="st {{ 'warn' if i.late else 'open' }}" aria-hidden="true">{{ tag }}</span>{% endif %}</span>
+    {% if full and b.note %}<span class="note">{{ b.note }}</span>{% endif %}
+  </a>
+{%- endmacro %}
+{% block content %}
+  <section class="page-head">
+    <div><h1 class="page-title">{{ en.CAL_TITLE }}</h1>
+      <span class="intro">{{ en.CAL_INTRO }}</span></div>
+    <div class="actions">
+      <a class="btn secondary" href="/calendar/phone">{{ en.CAL_PHONE_LINK }}</a>
+      <a class="btn" href="/calendar/new{% if v.flt.thing %}?thing={{ v.flt.thing.slug | urlencode }}{% endif %}">+ {{ en.CAL_BOOK }}</a>
+    </div>
+  </section>
+
+  {% if not things %}{% include "_nothing_to_book.html" %}{% endif %}
+
+  {% if v.holders %}
+  <section class="now" aria-label="{{ en.CAL_NOW }}">
+    <h2 class="h3">{{ en.CAL_NOW }}</h2>
+    <ul class="now-list">
+      {% for b in v.holders %}
+        <li><a href="/calendar/bookings/{{ b.id }}">{{ en.CAL_WITH_SINCE.format(name=b.bookable.name, who=who(b.member), since=loc(b.starts_at)) }}</a>
+          {% if b.destination %}<span class="muted">→ {{ b.destination }}</span>{% endif %}
+          {% if b.ends_at and b.ends_at < now %}<span class="st warn">{{ en.CAL_LATE.format(when=loc(b.ends_at)) }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section class="card tight" aria-label="{{ en.CAL_TITLE }}">
+    {# Two rows: the types (their dots are the colour key of the bookings), then each thing. #}
+    <nav class="cal-filters" aria-label="{{ en.CAL_FILTER }}">
+      <div class="cal-filter">
+        <a href="{{ url(flt={}) }}" class="chip {{ 'on' if not v.flt.query() }}" {% if not v.flt.query() %}aria-current="true"{% endif %}>{{ en.CAL_ALL }}</a>
+        {% for t, label in types.items() %}
+          <a href="{{ url(flt={'type': t}) }}" class="chip {{ 'on' if v.flt.type == t }}" {% if v.flt.type == t %}aria-current="true"{% endif %}><span class="dot {{ t }}" aria-hidden="true"></span>{{ label }}</a>
+        {% endfor %}
+      </div>
+      {% if things %}
+      <div class="cal-filter">
+        {% for t in things %}
+          {% set on = v.flt.thing and v.flt.thing.id == t.id %}
+          <a href="{{ url(flt={'thing': t.slug}) }}" class="chip thin {{ 'on' if on }}" {% if on %}aria-current="true"{% endif %}>{{ t.name }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </nav>
+    <div class="cal-bar">
+      <h2 class="cal-title">{% if v.kind == "month" %}{{ v.title_month }}{% else %}{{ v.first.day }} {{ v.first.strftime("%b") }} – {{ v.last.day }} {{ v.last.strftime("%b %Y") }}{% endif %}</h2>
+      <div class="cal-nav">
+        <a class="btn sm secondary icon" href="{{ url(day=v.prev) }}" aria-label="{{ en.CAL_PREV }}"><span aria-hidden="true">←</span></a>
+        <a class="btn sm secondary" href="{{ url(day=today) }}">{{ en.CAL_TODAY }}</a>
+        <a class="btn sm secondary icon" href="{{ url(day=v.next) }}" aria-label="{{ en.CAL_NEXT }}"><span aria-hidden="true">→</span></a>
+      </div>
+      <div class="seg" role="group" aria-label="{{ en.CAL_VIEW }}">
+        <a class="{{ 'on' if v.kind == 'month' }}" href="{{ url(view='month') }}" {% if v.kind == 'month' %}aria-current="true"{% endif %}>{{ en.CAL_MONTH }}</a>
+        <a class="{{ 'on' if v.kind == 'week' }}" href="{{ url(view='week') }}" {% if v.kind == 'week' %}aria-current="true"{% endif %}>{{ en.CAL_WEEK }}</a>
+      </div>
+    </div>
+
+    {% if v.kind == "month" %}
+      {% set booked = v.weeks | map("selectattr", "in_month") | map("selectattr", "items") | map("list") | sum(start=[]) %}
+      {% if not booked %}<p class="cal-month-empty">{{ en.CAL_MONTH_EMPTY.format(month=v.title_month) }}</p>{% endif %}
+      <div class="cal-month" role="table" aria-label="{{ v.title_month }}">
+        <div class="cal-head" role="row">{% for d in en.CAL_WEEKDAYS %}<span role="columnheader">{{ d }}</span>{% endfor %}</div>
+        {% for week in v.weeks %}
+          <div class="cal-week" role="row">
+            {% for d in week %}
+              <div class="cal-day{{ ' out' if not d.in_month }}{{ ' today' if d.is_today }}{{ ' has' if d.items }}" role="cell">
+                <a class="day" href="{{ url(view='week', day=d.day) }}" aria-label="{{ d.day.strftime('%A') }} {{ d.day.day }} {{ d.day.strftime('%B') }}"><span class="wd" aria-hidden="true">{{ en.CAL_WEEKDAYS[d.day.weekday()] }} </span>{{ d.day.day }}</a>
+                {# All of them: a desktop cell shows the first few (CSS hides .extra) and
+                   "+n more"; the phone list has room for every booking. #}
+                {% for i in d.items %}{% if loop.index > d.shown | length %}<span class="extra">{{ item(i) }}</span>{% else %}{{ item(i) }}{% endif %}{% endfor %}
+                {% if d.is_today and not d.items %}<span class="none">{{ en.CAL_NOTHING }}</span>{% endif %}
+                {% if d.more %}<a class="more" href="{{ url(view='week', day=d.day) }}">{{ en.CAL_MORE.format(n=d.more) }}</a>{% endif %}
+                {% if d.day >= today %}<a class="add" href="/calendar/new?day={{ d.day.isoformat() }}{% if v.flt.thing %}&thing={{ v.flt.thing.slug | urlencode }}{% endif %}" aria-label="{{ en.CAL_BOOK }}, {{ d.day.day }} {{ d.day.strftime('%B') }}">+</a>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {% set hidden = v.weeks[0] | selectattr("items", "eq", []) | selectattr("day", "lt", today) | list %}
+      {% if hidden %}<p class="cal-hidden-note">{{ en.CAL_EARLIER_EMPTY.format(n=hidden | length) }}</p>{% endif %}
+      <div class="cal-weekview">
+        {% for d in v.weeks[0] %}
+          <div class="cal-wday{{ ' today' if d.is_today }}{{ ' past' if d.day < today }}{{ ' empty' if not d.items }}">
+            <div class="wday-h"><h3>{% if d.is_today %}{{ en.RELATIVE_DAYS[0] }}, {% endif %}{{ en.CAL_WEEKDAYS[loop.index0] }} {{ d.day.day }} {{ d.day.strftime("%b") }}</h3>
+              {% if d.day >= today %}<a class="btn sm secondary icon" href="/calendar/new?day={{ d.day.isoformat() }}{% if v.flt.thing %}&thing={{ v.flt.thing.slug | urlencode }}{% endif %}" aria-label="{{ en.CAL_BOOK }}, {{ d.day.day }} {{ d.day.strftime('%B') }}">+</a>{% endif %}</div>
+            {% for i in d.items %}{{ item(i, full=true) }}{% else %}<span class="nothing">{{ en.CAL_NOTHING }}</span>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+{% endblock %}

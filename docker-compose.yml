@@ -1,0 +1,319 @@
+# COMMONS: the whole stack on one box.
+#
+#   caddy     edge proxy, the only published port (443)
+#   matrix    Synapse homeserver (federation off)
+#   mas       Matrix Authentication Service: accounts, login, tokens
+#   postgres  databases for COMMONS, Synapse and MAS (separate roles)
+#   app       COMMONS (web, internal API, chat assistant)
+#   llm       local language model (llama.cpp + SmolLM3-3B)
+#   bot       Matrix bot, relays chat to the app
+#   egress    allowlist proxy, the only way out (push, SMHI weather)
+#
+# First start (see README, "Run the stack"):
+#   make init                                        # app + Matrix bootstrap secrets/config
+#   make fetch-model                                 # model weights, checksum-verified
+#   docker compose up -d --build matrix mas postgres # then: scripts/bot_token.sh
+#   make up
+#
+# With Let's Encrypt via deSEC (needs secrets/desec_token):
+#   COMMONS_TLS=desec COMMONS_HOSTS=commons.theoutpost.network \
+#   COMMONS_MATRIX_HOST=matrix.commons.theoutpost.network \
+#   COMMONS_AUTH_HOST=auth.commons.theoutpost.network make up
+
+# Kept from the earlier test stack so existing containers and volumes are reused.
+name: commons-caddy
+
+x-hardening: &hardening
+  user: "10001:10001"
+  read_only: true
+  tmpfs:
+    - /tmp
+  cap_drop: [ALL]
+  security_opt:
+    - "no-new-privileges:true"
+  pids_limit: 200
+  restart: unless-stopped
+
+services:
+  caddy:
+    <<: *hardening
+    # Official Caddy plus the deSEC DNS and rate-limit plugins; pinned in the Dockerfile.
+    build: ./deploy/caddy
+    image: commons-caddy:local
+    mem_limit: 128m
+    ports:
+      # The only published port. Restrict to the LAN or VPN interface on the box,
+      # e.g. COMMONS_BIND=100.x.y.z.
+      - "${COMMONS_BIND:-0.0.0.0}:443:8443"
+    environment:
+      # "desec" (Let's Encrypt via DNS-01) or "internal" (local CA, offline fallback).
+      COMMONS_TLS: ${COMMONS_TLS:-internal}
+      COMMONS_HOSTS: ${COMMONS_HOSTS:-localhost}
+      COMMONS_MATRIX_HOST: ${COMMONS_MATRIX_HOST:-matrix.localhost}
+      COMMONS_AUTH_HOST: ${COMMONS_AUTH_HOST:-auth.localhost}
+      # Certificate for clients that send no SNI, i.e. connect by IP address.
+      COMMONS_DEFAULT_SNI: ${COMMONS_DEFAULT_SNI:-localhost}
+      # Short HSTS while testing; the Caddyfile default (1 year) applies when unset.
+      COMMONS_HSTS_MAX_AGE: ${COMMONS_HSTS_MAX_AGE:-300}
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates, the ACME account key and (internal mode) the local root CA.
+      # Must persist and be backed up encrypted.
+      - caddy-data:/data
+      - caddy-config:/config
+    secrets: [desec_token]
+    # web: reaches Let's Encrypt and deSEC. internal: reaches app, matrix and mas.
+    networks: [web, internal]
+    depends_on: [app, matrix, mas]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Synapse; the service name "matrix" is what Caddy and the app use (matrix:8008).
+  matrix:
+    <<: *hardening
+    build: ./deploy/synapse
+    image: commons-synapse:local
+    mem_limit: 1g
+    entrypoint:
+      - python
+      - -m
+      - synapse.app.homeserver
+      - --config-path
+      - /config/homeserver.yaml
+      - --config-path
+      - /run/secrets/synapse_secrets
+    environment:
+      # Push to Element's gateway goes through the allowlist proxy; internal calls don't.
+      HTTPS_PROXY: http://egress:8888
+      NO_PROXY: mas,postgres,localhost,127.0.0.1
+    volumes:
+      - ./deploy/synapse/homeserver.yaml:/config/homeserver.yaml:ro
+      # Media and the Synapse signing key cache. Back up encrypted.
+      - synapse-data:/data
+    secrets: [synapse_secrets, synapse_signing_key]
+    networks: [internal]
+    depends_on: [postgres, egress]
+
+  mas:
+    <<: *hardening
+    # The pinned MAS image with one template replaced (deploy/mas/Dockerfile):
+    # sign-up fills in the invite code from a COMMONS invite link by itself.
+    build: ./deploy/mas
+    image: commons-mas:local
+    # The image's own non-root user (distroless "nonroot").
+    user: "65532:65532"
+    # Config files are merged in order (lists are appended, later values win): the
+    # generated config, an internal-only admin API listener, the account rules
+    # (sign-up with registration tokens only) and COMMONS' admin client
+    # (scripts/commons_admin_client.py).
+    command:
+      - server
+      - --config
+      - /run/secrets/mas_config
+      - --config
+      - /config/admin-listener.yaml
+      - --config
+      - /config/accounts.yaml
+      - --config
+      - /run/secrets/mas_commons_client
+    volumes:
+      - ./deploy/synapse/mas-admin-listener.yaml:/config/admin-listener.yaml:ro
+      - ./deploy/synapse/mas-accounts.yaml:/config/accounts.yaml:ro
+    mem_limit: 256m
+    secrets: [mas_config, mas_commons_client]
+    networks: [internal]
+    depends_on: [postgres]
+
+  postgres:
+    <<: *hardening
+    image: postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
+    user: "70:70"
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    mem_limit: 512m
+    environment:
+      POSTGRES_USER: matrix
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      # All three databases. Back up encrypted.
+      - postgres-data:/var/lib/postgresql/data
+      # Run in name order on first start: Matrix databases, then the COMMONS database.
+      - ./deploy/synapse/postgres-init-1.sql:/docker-entrypoint-initdb.d/1-matrix.sql:ro
+      - ./deploy/synapse/postgres-init-commons.sh:/docker-entrypoint-initdb.d/2-commons.sh:ro
+    secrets: [postgres_password, database_password]
+    networks: [internal]
+
+  app:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: commons-app:local
+    mem_limit: 256m
+    environment:
+      COMMONS_PUBLIC_URL: "https://${COMMONS_HOSTS:-localhost}"
+      COMMONS_MATRIX_PUBLIC_URL: "https://${COMMONS_MATRIX_HOST:-matrix.localhost}"
+      COMMONS_MATRIX_INTERNAL_URL: "http://matrix:8008"
+      COMMONS_MATRIX_SERVER_NAME: "${COMMONS_HOSTS:-localhost}"
+      COMMONS_MATRIX_AUTH_PUBLIC_URL: "https://${COMMONS_AUTH_HOST:-auth.localhost}"
+      COMMONS_MATRIX_AUTH_INTERNAL_URL: "http://mas:8080"
+      # MAS admin API, internal listener (not proxied by Caddy).
+      COMMONS_MATRIX_ADMIN_API_URL: "http://mas:8081"
+      # Must match CLIENT_ID in scripts/commons_admin_client.py.
+      COMMONS_MATRIX_ADMIN_CLIENT_ID: "01KCMMNS0APP0000000000000C"
+      # Demo video only, after `make seed-demo`: COMMONS_ENV=demo
+      # COMMONS_DB_NAME=commons_demo COMMONS_DATA_DIR=/data/demo make up.
+      # The app refuses any other mix of mode and database.
+      COMMONS_ENV: "${COMMONS_ENV:-production}"
+      COMMONS_DATA_DIR: "${COMMONS_DATA_DIR:-/data}"
+      COMMONS_DATABASE_URL: "postgresql+psycopg://commons@postgres:5432/${COMMONS_DB_NAME:-commons}"
+      COMMONS_LLM_URL: "http://llm:8080"
+      # Weather from SMHI open data, fetched through the egress proxy (documented
+      # runtime exception). Only these coordinates leave the box. Unset = no weather.
+      COMMONS_WEATHER_LATITUDE: "${COMMONS_WEATHER_LATITUDE:-59.837}"
+      COMMONS_WEATHER_LONGITUDE: "${COMMONS_WEATHER_LONGITUDE:-15.503}"
+      COMMONS_WEATHER_PLACE: "${COMMONS_WEATHER_PLACE:-the Outpost}"
+      COMMONS_EGRESS_PROXY: "http://egress:8888"
+    # Mounted read-only at /run/secrets/<name>; never passed as environment variables.
+    secrets:
+      - internal_api_token
+      - llm_api_key
+      - database_password
+      - matrix_admin_client_secret
+    volumes:
+      # App state: the OAuth client registration and the log signing key (data/keys).
+      - app-data:/data
+      # Community settings, read once on the first start to seed the database.
+      - ./community.yaml:/config/community.yaml:ro
+    networks: [internal]
+    depends_on: [matrix, postgres, mas, llm, egress]
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Local language model (llama.cpp). Internal network only, never reachable
+  # from the LAN; weights fetched once with `make fetch-model`, mounted read-only.
+  llm:
+    <<: *hardening
+    image: ghcr.io/ggml-org/llama.cpp:server-b12211@sha256:30300ecfcb7ef05dc9413867dd7d03c9ce66eef00fec3576a6a15e9bf2b0bae7
+    command:
+      - -m
+      - /models/SmolLM3-Q4_K_M.gguf
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      # 8k tokens: instructions (~2k) + the community guide (~2k) + the chat so
+      # far (~1.5k) + the answer. The KV cache is kept in 8 bits (flash attention
+      # needed for that), which keeps the container well under its 3 GB limit.
+      - --ctx-size
+      - "8192"
+      - --flash-attn
+      - "on"
+      - --cache-type-k
+      - q8_0
+      - --cache-type-v
+      - q8_0
+      - --parallel
+      - "1"
+      - --threads
+      - "${COMMONS_LLM_THREADS:-4}"
+      - --jinja
+      - --no-webui
+      - --offline
+      - --api-key-file
+      - /run/secrets/llm_api_key
+    environment:
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ./models:/models:ro
+    secrets: [llm_api_key]
+    mem_limit: 3g
+    networks: [internal]
+
+  # Matrix chat bot: relays messages to the app's internal API. No database or model access.
+  bot:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    image: commons-bot:local
+    mem_limit: 256m
+    environment:
+      COMMONS_BOT_HOMESERVER_URL: "http://matrix:8008"
+      COMMONS_BOT_USER_ID: "@commons:${COMMONS_HOSTS:-localhost}"
+      COMMONS_BOT_DEVICE_ID: COMMONSBOT
+      COMMONS_BOT_APP_URL: "http://app:8000"
+    volumes:
+      # Encryption keys (crypto store) and the cross-signing recovery key. Back up encrypted.
+      - bot-data:/data
+    secrets: [bot_access_token, bot_pickle_key, internal_api_token]
+    networks: [internal]
+    depends_on: [matrix, app]
+
+  egress:
+    <<: *hardening
+    # tinyproxy with a host allowlist (deploy/egress/allowlist.txt).
+    build: ./deploy/egress
+    image: commons-egress:local
+    mem_limit: 32m
+    networks: [internal, outbound]
+
+networks:
+  # Caddy only: it must reach Let's Encrypt and deSEC to issue and renew.
+  web: {}
+  # Backend services: no egress at all.
+  internal:
+    internal: true
+  # Egress proxy only: the one allowlisted way out for backend services.
+  outbound: {}
+
+secrets:
+  # Created by `make init` (openssl rand, mode 0600); secrets/ is git-ignored.
+  internal_api_token:
+    file: ./secrets/internal_api_token
+  llm_api_key:
+    file: ./secrets/llm_api_key
+  database_password:
+    file: ./secrets/database_password
+  # Only read with COMMONS_TLS=desec; for internal mode without a token,
+  # set DESEC_TOKEN_FILE=/dev/null.
+  desec_token:
+    file: ${DESEC_TOKEN_FILE:-./secrets/desec_token}
+  # Created by scripts/synapse_trial_init.py.
+  synapse_secrets:
+    file: ./secrets/matrix/synapse.yaml
+  synapse_signing_key:
+    file: ./secrets/matrix/signing.key
+  mas_config:
+    file: ./secrets/matrix/mas.yaml
+  postgres_password:
+    file: ./secrets/matrix/postgres_password
+  # Created by scripts/commons_admin_client.py.
+  mas_commons_client:
+    file: ./secrets/matrix/mas-commons-client.yaml
+  matrix_admin_client_secret:
+    file: ./secrets/matrix/matrix_admin_client_secret
+  # Created by scripts/bot_token.sh.
+  bot_access_token:
+    file: ./secrets/matrix/bot_access_token
+  bot_pickle_key:
+    file: ./secrets/matrix/bot_pickle_key
+
+volumes:
+  caddy-data:
+  caddy-config:
+  synapse-data:
+  postgres-data:
+  app-data:
+  bot-data:

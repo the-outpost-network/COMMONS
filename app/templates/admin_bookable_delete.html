@@ -1,0 +1,21 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  <section class="card" aria-label="{{ en.BOOKABLE_DELETE_TITLE }}">
+    <h2>{{ en.BOOKABLE_DELETE_TITLE }}</h2>
+    <p><strong>{{ en.BOOKABLE_DELETE_QUESTION.format(name=thing.name) }}</strong></p>
+    <ul>{% for line in en.BOOKABLE_DELETE_EFFECTS %}<li>{{ line }}</li>{% endfor %}</ul>
+    <div class="actions">
+      <form method="post" action="/admin/bookable/{{ thing.id }}/delete">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn danger" type="submit">Yes, delete for good</button>
+      </form>
+      {% if thing.is_active %}
+      <form method="post" action="/admin/bookable/{{ thing.id }}/archive">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn secondary" type="submit">Archive instead</button>
+      </form>
+      {% endif %}
+      <a class="btn secondary" href="/admin/bookable">Cancel</a>
+    </div>
+  </section>
+{% endblock %}

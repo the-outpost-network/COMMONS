@@ -1,0 +1,21 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  <section class="card" aria-label="{{ en.RESOURCES_DELETE_TITLE }}">
+    <h2>{{ en.RESOURCES_DELETE_TITLE }}</h2>
+    <p><strong>{{ en.RESOURCES_DELETE_QUESTION.format(name=category.name) }}</strong></p>
+    <ul>{% for line in en.RESOURCES_DELETE_EFFECTS %}<li>{{ line }}</li>{% endfor %}</ul>
+    <div class="actions">
+      <form method="post" action="/admin/resources/{{ category.id }}/delete">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn danger" type="submit">Yes, delete for good</button>
+      </form>
+      {% if category.is_active %}
+      <form method="post" action="/admin/resources/{{ category.id }}/archive">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn secondary" type="submit">Archive instead</button>
+      </form>
+      {% endif %}
+      <a class="btn secondary" href="/admin/resources">Cancel</a>
+    </div>
+  </section>
+{% endblock %}

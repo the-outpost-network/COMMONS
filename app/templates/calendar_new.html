@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% macro hint(name) %}{% if bad == name %}<span class="err" id="e-{{ name }}" role="alert">{{ error }}</span>{% else %}{% set h = en.CAL_FIELDS[name][1] %}{% if h %}<span class="hint">{{ h.format(hours=open_hours) }}</span>{% endif %}{% endif %}{% endmacro %}
+{# The field an error is about: marked, with the message under it (as in the settings forms). #}
+{% macro invalid(name) %}{% if bad == name %} aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}{% endmacro %}
+{% macro cls(name) %}inp{{ ' bad' if bad == name }}{% endmacro %}
+{% block content %}
+  <section class="page-head">
+    <div><a class="back" href="/calendar">{{ en.CAL_BACK }}</a><h1 class="page-title">{{ title }}</h1></div>
+  </section>
+  {% if not things %}
+    {% include "_nothing_to_book.html" %}
+  {% else %}
+  <section class="card" aria-label="{{ title }}">
+    {% if error and not bad %}<div class="alert-box" role="alert"><span aria-hidden="true">!</span><span>{{ error }}{% if clash %} <a href="{{ clash.href }}">{{ clash.text }}</a>{% endif %}</span></div>{% endif %}
+    <form class="form" method="post" action="/calendar/bookings" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <div class="form-grid">
+        <label for="f-thing">{{ en.CAL_FIELDS.thing[0] }}</label>
+        <div class="field">
+          <select class="{{ cls('thing') }}" id="f-thing" name="thing" required{{ invalid('thing') }}>
+            <option value="">–</option>
+            {% for t in things %}
+              <option value="{{ t.slug }}" {{ "selected" if form.thing == t.slug }} data-type="{{ t.type }}">{{ t.name }} ({{ en.BOOKABLE_TYPES[t.type] }}{% if t.location %}, {{ t.location }}{% endif %})</option>
+            {% endfor %}
+          </select>
+          {{ hint("thing") }}
+        </div>
+        <label for="f-start">{{ en.CAL_FIELDS.start[0] }}</label>
+        <div class="field"><input class="{{ cls('start') }}" type="datetime-local" id="f-start" name="start" value="{{ form.start }}"{{ invalid('start') }}>{{ hint("start") }}</div>
+        <label for="f-end">{{ en.CAL_FIELDS.end[0] }}</label>
+        <div class="field"><input class="{{ cls('end') }}" type="datetime-local" id="f-end" name="end" value="{{ form.end }}"{{ invalid('end') }}>{{ hint("end") }}</div>
+        <label for="f-note">{{ en.CAL_FIELDS.note[0] }}</label>
+        <div class="field"><input class="{{ cls('note') }}" id="f-note" name="note" maxlength="200" value="{{ form.note }}" autocomplete="off"{{ invalid('note') }}>{{ hint("note") }}</div>
+        {# Shown for vehicles only, in browsers with :has() (CSS, no script); others always show it. #}
+        <label class="vehicle-only{{ ' keep' if bad == 'destination' }}" for="f-destination">{{ en.CAL_FIELDS.destination[0] }}</label>
+        <div class="field vehicle-only{{ ' keep' if bad == 'destination' }}"><input class="{{ cls('destination') }}" id="f-destination" name="destination" maxlength="100" value="{{ form.destination }}" autocomplete="off"{{ invalid('destination') }}>{{ hint("destination") }}</div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">{{ en.CAL_SUBMIT }}</button>
+        <a class="btn secondary" href="/calendar">Cancel</a>
+      </div>
+    </form>
+  </section>
+  {% endif %}
+{% endblock %}

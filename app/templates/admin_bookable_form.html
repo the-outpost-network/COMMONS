@@ -1,0 +1,43 @@
+{% extends "settings_base.html" %}
+{% macro err(name) %}{% if errors.get(name) %}<span class="err" id="e-{{ name }}" role="alert">{{ errors[name] }}</span>{% endif %}{% endmacro %}
+{% macro aria(name) %}{% if errors.get(name) %}aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}{% endmacro %}
+{% macro hint(name) %}{% set h = en.BOOKABLE_FIELDS[name][1] %}{% if h and not errors.get(name) %}<span class="hint">{{ h }}</span>{% endif %}{% endmacro %}
+{% block settings %}
+  <section class="card" aria-label="{{ title }}">
+    <div class="sect-h"><h2>{{ title }}{% if thing %}: {{ thing.name }}{% endif %}</h2>
+      <a class="back" href="/admin/bookable">{{ en.BOOKABLE_BACK }}</a></div>
+    <form class="form" method="post" action="/admin/bookable{{ '/' ~ thing.id if thing }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <div class="form-grid">
+        <label for="f-name">{{ en.BOOKABLE_FIELDS.name[0] }}</label>
+        <div class="field">
+          <input class="inp {{ 'bad' if errors.get('name') }}" id="f-name" name="name" value="{{ form.name }}" autocomplete="off" {{ aria("name") }}>
+          {{ err("name") }}{{ hint("name") }}
+        </div>
+        <span class="lab">{{ en.BOOKABLE_FIELDS.type[0] }}</span>
+        <div class="field">
+          <div class="choices" role="radiogroup" aria-label="{{ en.BOOKABLE_FIELDS.type[0] }}">
+            {% for t in types %}
+              <label><input type="radio" name="type" value="{{ t }}" {{ "checked" if form.type == t }}> {{ en.BOOKABLE_TYPE_HELP[t] }}</label>
+            {% endfor %}
+          </div>
+          {{ err("type") }}
+        </div>
+        <label for="f-location">{{ en.BOOKABLE_FIELDS.location[0] }}</label>
+        <div class="field">
+          <input class="inp {{ 'bad' if errors.get('location') }}" id="f-location" name="location" value="{{ form.location }}" autocomplete="off" {{ aria("location") }}>
+          {{ err("location") }}{{ hint("location") }}
+        </div>
+        <label for="f-description">{{ en.BOOKABLE_FIELDS.description[0] }}</label>
+        <div class="field">
+          <textarea class="inp {{ 'bad' if errors.get('description') }}" id="f-description" name="description" rows="3" {{ aria("description") }}>{{ form.description }}</textarea>
+          {{ err("description") }}{{ hint("description") }}
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit">{{ "Save" if thing else en.BOOKABLE_NEW_TITLE }}</button>
+        <a class="btn secondary" href="/admin/bookable">Cancel</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

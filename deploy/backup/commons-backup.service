@@ -1,0 +1,24 @@
+# Nightly encrypted backup of COMMONS (docs/BACKUP.md). Install on the host:
+#   sudo cp deploy/backup/commons-backup.{service,timer} /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now commons-backup.timer
+# Adjust User= and WorkingDirectory= to the account and checkout that run the stack.
+[Unit]
+Description=COMMONS encrypted backup
+Wants=docker.service
+After=docker.service
+# The backup disk must be mounted; without it the script refuses and alerts the admins.
+RequiresMountsFor=/mnt/commons-backup
+
+[Service]
+Type=oneshot
+User=commons
+Group=commons
+WorkingDirectory=/opt/commons
+# COMMONS_BACKUP_DIR, COMMONS_BACKUP_RECIPIENTS (public keys only), COMMONS_BACKUP_KEEP.
+EnvironmentFile=/etc/commons/backup.env
+ExecStart=/opt/commons/scripts/backup.sh
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+PrivateTmp=true
+NoNewPrivileges=true

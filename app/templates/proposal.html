@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_vote.html" import vote_card, log_link %}
+{% block content %}
+  {% set p = v.p %}
+  <a class="small" href="/proposals">&larr; {{ en.VOTES_BACK }}</a>
+
+  {% if done %}<div class="ok-box" role="status">{{ done }}</div>{% endif %}
+  {% if error %}<div class="alert-box" role="alert"><span aria-hidden="true">!</span><span>{{ error }}</span></div>{% endif %}
+
+  {{ vote_card(v, current, "detail") }}
+
+  {% if p.status == "cancelled" %}
+    <section class="card tight" aria-labelledby="h-cancelled">
+      <h2 id="h-cancelled">{{ en.VOTES_RESULT.cancelled }}</h2>
+      <span>{{ en.PROPOSAL_CANCEL_REASON.format(reason=p.cancel_reason) }}</span>
+    </section>
+  {% endif %}
+
+  <section class="card tight" aria-labelledby="h-record">
+    <h2 id="h-record">{{ en.VOTES_RECORD }}</h2>
+    <span>{{ rules }} {{ en.VOTES_HOW_BALLOTS }}</span>
+    <span class="small">
+      {% if v.log_seq.get("proposal.opened") %}{{ log_link(v.log_seq["proposal.opened"], en.VOTES_LOG_OPENED.format(seq=v.log_seq["proposal.opened"])) }}{% endif %}
+      {% if v.log_seq.get("proposal.closed") %} · {{ log_link(v.log_seq["proposal.closed"], en.VOTES_LOG_CLOSED.format(seq=v.log_seq["proposal.closed"])) }}{% endif %}
+      {% if v.log_seq.get("proposal.cancelled") %} · {{ log_link(v.log_seq["proposal.cancelled"], en.VOTES_LOG_CANCELLED.format(seq=v.log_seq["proposal.cancelled"])) }}{% endif %}
+    </span>
+    <span class="small muted">{{ en.PROPOSALS_TZ_NOTE.format(tz=tz) }}</span>
+  </section>
+
+  {% if p.status == "open" and can_govern %}
+    <section class="card tight" aria-labelledby="h-cancel">
+      <details>
+        <summary class="edit danger" id="h-cancel">{{ en.PROPOSAL_CANCEL }}</summary>
+        <form class="form" method="post" action="/proposals/{{ p.id }}/cancel">
+          <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+          <label class="field" for="f-reason"><b>{{ en.PROPOSAL_CANCEL_FIELD }}</b>
+            <input class="inp" id="f-reason" name="reason" required maxlength="500" autocomplete="off">
+            <span class="hint">{{ en.PROPOSAL_CANCEL_HINT }}</span></label>
+          <div class="actions"><button class="btn coral" type="submit">{{ en.PROPOSAL_CANCEL }}</button></div>
+        </form>
+      </details>
+    </section>
+  {% endif %}
+{% endblock %}

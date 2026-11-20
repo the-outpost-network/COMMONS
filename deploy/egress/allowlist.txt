@@ -1,0 +1,2 @@
+^matrix\.org$
+^opendata-download-metfcst\.smhi\.se$

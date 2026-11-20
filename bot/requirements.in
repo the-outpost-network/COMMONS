@@ -1,0 +1,6 @@
+# Bot image only (Linux, amd64 + arm64). Compile with `make lock`.
+mautrix[encryption]==0.21.1
+aiosqlite>=0.20
+# mautrix's crypto store imports asyncpg even when it runs on SQLite.
+asyncpg>=0.30
+httpx>=0.28

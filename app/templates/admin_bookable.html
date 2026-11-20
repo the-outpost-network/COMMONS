@@ -1,0 +1,39 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  <section class="card tight" aria-label="{{ en.BOOKABLE_TITLE }}">
+    <div class="sect-h"><h2>{{ en.BOOKABLE_TITLE }}</h2>
+      <a class="btn" href="/admin/bookable/new">+ {{ en.BOOKABLE_NEW_TITLE }}</a></div>
+    <p class="muted">{{ en.BOOKABLE_INTRO }}</p>
+    {% if things %}
+    {# Phones: one card per row, led by the name, type and place on one line. #}
+    <div class="table-wrap"><table class="stack rows">
+      <thead><tr><th>Thing</th><th>Type</th><th>Where it is</th><th></th></tr></thead>
+      <tbody>
+      {% for t in things %}
+        <tr class="{{ 'archived' if not t.is_active }}">
+          <td class="lead" data-label=""><b>{{ t.name }}</b>{% if not t.is_active %} <span class="st off">archived</span>{% endif %}
+            {% if t.description %}<br><span class="muted">{{ t.description }}</span>{% endif %}
+            <span class="row-meta">{{ en.BOOKABLE_TYPES[t.type] }}{% if t.location %} · {{ t.location }}{% endif %}</span></td>
+          <td class="desk" data-label="Type">{{ en.BOOKABLE_TYPES[t.type] }}</td>
+          <td class="desk" data-label="Where it is">{{ t.location or "–" }}</td>
+          <td class="fit acts" data-label=""><div class="row-actions"><div class="actions">
+            <a class="btn sm secondary" href="/admin/bookable/{{ t.id }}/edit">Edit</a>
+            <form method="post" action="/admin/bookable/{{ t.id }}/{{ 'archive' if t.is_active else 'restore' }}">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <button class="btn sm secondary" type="submit">{{ "Archive" if t.is_active else "Restore" }}</button>
+            </form>
+            </div>
+            <form class="danger-zone" method="get" action="/admin/bookable/{{ t.id }}/delete">
+              <button class="btn sm danger" type="submit">Delete</button>
+            </form>
+          </div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+      <span class="empty">{{ en.BOOKABLE_EMPTY }}</span>
+    {% endif %}
+    <span class="small muted">{{ en.BOOKABLE_NOTE }}</span>
+  </section>
+{% endblock %}

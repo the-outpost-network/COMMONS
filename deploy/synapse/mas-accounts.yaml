@@ -1,0 +1,16 @@
+# Account rules for MAS, read after secrets/synapse-trial/mas.yaml (later files win).
+# Kept here, not in the generated config, so a change applies to existing installs.
+#
+# Sign-up is open only to someone holding a registration token. An admin creates a
+# single-use, short-lived token on COMMONS' "Manage members" page (MAS admin API).
+# Every account on this homeserver is a COMMONS member, so an invite is the only
+# way in. No email: there is no mail server, and nothing leaves the box.
+account:
+  password_registration_enabled: true
+  registration_token_required: true
+  password_registration_email_required: false
+  password_change_allowed: true
+  # Recovery works by email only; there is none. An admin resets passwords instead.
+  password_recovery_enabled: false
+  email_change_allowed: false
+  displayname_change_allowed: true

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% macro hint(name) %}{% if bad == name %}<span class="err" id="e-{{ name }}" role="alert">{{ error }}</span>{% else %}{% set h = en.CAL_FIELDS[name][1] %}{% if h %}<span class="hint{{ ' fw-normal' if name == 'reason' }}">{{ h.format(hours=open_hours) }}</span>{% endif %}{% endif %}{% endmacro %}
+{# The field an error is about: marked, with the message under it (as in the settings forms). #}
+{% macro invalid(name) %}{% if bad == name %} aria-invalid="true" aria-describedby="e-{{ name }}"{% endif %}{% endmacro %}
+{% macro cls(name) %}inp{{ ' bad' if bad == name }}{% endmacro %}
+{% block content %}
+  {% set own = b.member_id == current.member.id %}
+  <section class="page-head">
+    <div><a class="back" href="/calendar?view=week&day={{ b.starts_at.astimezone(tz).date().isoformat() }}">{{ en.CAL_BACK }}</a>
+      <h1 class="page-title">{{ b.bookable.name }}</h1></div>
+  </section>
+  <section class="card" aria-label="{{ title }}">
+    {# Just cancelled: the status line below says it once; no success box on top. #}
+    {% if done and not (b.cancelled_at and done == en.CAL_DONE.cancelled) %}<div class="ok-box" role="status">{{ done }}</div>{% endif %}
+    {% if error and not bad %}<div class="alert-box" role="alert"><span aria-hidden="true">!</span><span>{{ error }}{% if clash %} <a href="{{ clash.href }}">{{ clash.text }}</a>{% endif %}</span></div>{% endif %}
+    <dl class="facts">
+      <dt>{{ en.CAL_BOOKED_BY }}</dt><dd>{{ who(b.member) }}</dd>
+      <dt>{{ en.CAL_WHEN }}</dt><dd>{{ when }}{% if not b.ends_at %} ({{ en.CAL_OPEN_END }}){% endif %}</dd>
+      {% if b.bookable.location %}<dt>{{ en.BOOKABLE_FIELDS.location[0] }}</dt><dd>{{ b.bookable.location }}</dd>{% endif %}
+      {% if b.destination %}<dt>{{ en.CAL_FIELDS.destination[0] }}</dt><dd>{{ b.destination }}</dd>{% endif %}
+      {% if b.note %}<dt>{{ en.CAL_FIELDS.note[0] }}</dt><dd>{{ b.note }}</dd>{% endif %}
+    </dl>
+    {# A sentence, not a tag: it wraps on phones; the actions follow under it. #}
+    {% if b.cancelled_at %}
+      <p class="state-line off" {% if done %}role="status"{% endif %}>{% if b.cancel_reason %}{{ en.CAL_STATUS_CANCELLED_REASON.format(when=loc(b.cancelled_at), reason=b.cancel_reason) }}{% else %}{{ en.CAL_STATUS_CANCELLED.format(when=loc(b.cancelled_at)) }}{% endif %}</p>
+    {% elif b.returned_at %}
+      <p class="state-line off">{{ en.CAL_STATUS_RETURNED.format(when=loc(b.returned_at)) }}</p>
+    {% elif holding %}
+      <p class="state-line{{ ' late' if late }}">{{ en.CAL_WITH_SINCE.format(name=b.bookable.name, who=who(b.member), since=loc(b.starts_at)) }}{% if late %}, {{ en.CAL_LATE.format(when=loc(b.ends_at)) }}{% endif %}</p>
+    {% endif %}
+    {% if can_return or can_cancel %}
+      <div class="actions">
+        {% if can_return %}
+          <form method="post" action="/calendar/bookings/{{ b.id }}/return">
+            <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+            <button class="btn" type="submit">{{ en.CAL_RETURN }}</button>
+          </form>
+        {% endif %}
+        {% if can_cancel %}
+          <form method="post" action="/calendar/bookings/{{ b.id }}/cancel">
+            <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+            <button class="btn sm danger" type="submit">{{ en.CAL_CANCEL }}</button>
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  {% if can_change %}
+  <section class="card" aria-label="{{ en.CAL_CHANGE }}">
+    <h3>{{ en.CAL_CHANGE if own else en.CAL_CHANGE_ADMIN }}</h3>
+    <form class="form" method="post" action="/calendar/bookings/{{ b.id }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <div class="form-grid">
+        <label for="f-start">{{ en.CAL_FIELDS.start[0] }}</label>
+        <div class="field">
+          {% if started %}<input class="inp" type="datetime-local" id="f-start" value="{{ form.start }}" readonly><span class="hint">{{ en.CAL_START_FIXED }}</span>
+          {% else %}<input class="{{ cls('start') }}" type="datetime-local" id="f-start" name="start" value="{{ form.start }}"{{ invalid('start') }}>{{ hint("start") if bad == "start" }}{% endif %}
+        </div>
+        <label for="f-end">{{ en.CAL_FIELDS.end[0] }}</label>
+        <div class="field"><input class="{{ cls('end') }}" type="datetime-local" id="f-end" name="end" value="{{ form.end }}"{{ invalid('end') }}>{{ hint("end") }}</div>
+        <label for="f-note">{{ en.CAL_FIELDS.note[0] }}</label>
+        <div class="field"><input class="{{ cls('note') }}" id="f-note" name="note" maxlength="200" value="{{ form.note }}" autocomplete="off"{{ invalid('note') }}>{{ hint("note") if bad == "note" }}</div>
+        {% if b.bookable.type == "vehicle" %}
+          <label for="f-destination">{{ en.CAL_FIELDS.destination[0] }}</label>
+          <div class="field"><input class="{{ cls('destination') }}" id="f-destination" name="destination" maxlength="100" value="{{ form.destination }}" autocomplete="off"{{ invalid('destination') }}>{{ hint("destination") if bad == "destination" }}</div>
+        {% endif %}
+      </div>
+      <div class="actions"><button class="btn" type="submit">{{ en.CAL_SAVE }}</button></div>
+    </form>
+  </section>
+  {% endif %}
+
+  {% if can_admin_cancel %}
+  <section class="card" aria-label="{{ en.CAL_ADMIN_CANCEL }}">
+    <h3>{{ en.CAL_ADMIN_CANCEL }}</h3>
+    <form class="inline-form" method="post" action="/calendar/bookings/{{ b.id }}/cancel">
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <label class="lab" for="f-reason">{{ en.CAL_FIELDS.reason[0] }}</label>
+      <div class="inline-row">
+        <input class="{{ cls('reason') }}" id="f-reason" name="reason" maxlength="200" value="{{ form.reason }}" autocomplete="off" required{{ invalid('reason') }}>
+        <button class="btn danger" type="submit">{{ en.CAL_ADMIN_CANCEL }}</button>
+      </div>
+      {{ hint("reason") }}
+    </form>
+  </section>
+  {% endif %}
+{% endblock %}

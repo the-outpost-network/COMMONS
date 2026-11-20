@@ -1,0 +1,15 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  <section class="card" aria-label="{{ en.ADMIN_DELETE_TITLE }}">
+    <h2>{{ en.ADMIN_DELETE_TITLE }}</h2>
+    <p><strong>{{ en.ADMIN_DELETE_QUESTION.format(user=(m.display_name ~ " (" ~ m.matrix_user_id ~ ")") if m.display_name else m.matrix_user_id) }}</strong></p>
+    <ul>{% for line in en.ADMIN_DELETE_EFFECTS %}<li>{{ line }}</li>{% endfor %}</ul>
+    <div class="actions">
+      <form method="post" action="/admin/members/{{ m.id }}/delete">
+        <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+        <button class="btn danger" type="submit">{{ en.ADMIN_DELETE_CONFIRM }}</button>
+      </form>
+      <a class="btn secondary" href="/admin/members">{{ en.ADMIN_DELETE_CANCEL }}</a>
+    </div>
+  </section>
+{% endblock %}

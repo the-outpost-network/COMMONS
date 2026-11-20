@@ -1,0 +1,11 @@
+# Runs commons-backup.service every night; a missed run (box off) runs at the next boot.
+[Unit]
+Description=Nightly COMMONS backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/Stockholm
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

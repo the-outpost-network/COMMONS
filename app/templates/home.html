@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% from "_vote.html" import vote_card %}
+{% block scripts %}
+  {% if logged %}<script src="/static/snackbar.js?v={{ asset_versions['snackbar.js'] }}" defer></script>{% endif %}
+{% endblock %}
+{% block page %}
+{% if current %}{{ super() }}{% else %}
+  <div class="wrap">
+    <div class="auth">
+      {# The community is the name here; Commons is the tool it uses. #}
+      <main class="box">
+        <div class="signin-head">
+          {% if community_name %}
+            <span class="wm">{{ en.WORDMARK }}</span>
+            <h1 class="signin-name">{{ community_name }}</h1>
+          {% else %}
+            <h1 class="signin-name">{{ en.WORDMARK }}</h1>
+          {% endif %}
+        </div>
+        <a class="btn" href="/auth/login">{{ en.SIGN_IN_WITH_MATRIX }}</a>
+        <p class="hint center">{{ en.SIGN_IN_ACCOUNT }} {{ en.SIGN_IN_NO_ACCOUNT }}</p>
+      </main>
+    </div>
+    {% include "_footer.html" %}
+  </div>
+{% endif %}
+{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <div><h1 class="page-title">{{ en.BOARD_TITLE }}</h1></div>
+  </section>
+  {% if logged %}
+    <div class="ok-box snackbar" data-focus-target="res-{{ logged.category.slug }}">
+      <span role="status">{{ en.BOARD_LOGGED.format(name=logged.category.name, what=en.LEDGER_TYPE_PAST[logged.entry_type], amount=logged.amount | num, unit=logged.category.unit) }}</span>
+      <button class="snackbar-dismiss" type="button" aria-label="{{ en.DISMISS }}" hidden><span aria-hidden="true">×</span></button>
+    </div>
+  {% endif %}
+  {% if levels %}
+    {% set low = levels | selectattr("below_threshold") | list %}
+    {% set measured = levels | selectattr("value", "ne", none) | selectattr("category.shortage_threshold", "ne", none) | list %}
+    {% if low | length == 1 %}
+      {% set c = low[0].category %}
+      <p class="board-status low">{{ en.BOARD_LOW_ONE.format(name=c.name, value=low[0].value | num, unit=c.unit, threshold=c.shortage_threshold | num) }}</p>
+    {% elif low %}
+      {% set items = [] %}
+      {% for lv in low %}{% set _ = items.append(en.BOARD_LOW_ITEM.format(name=lv.category.name, value=lv.value | num, unit=lv.category.unit)) %}{% endfor %}
+      <p class="board-status low">{{ en.BOARD_LOW_MANY.format(items=items | join(", ")) }}</p>
+    {% elif measured %}
+      <p class="board-status">{{ en.BOARD_ALL_OK }}</p>
+    {% endif %}
+    <div class="res-grid">
+      {# Low resources first, then the rest in the configured order. #}
+      {% for lv in low + (levels | rejectattr("below_threshold") | list) %}
+        {% set r = lv.category %}
+        {% set err = form_error if form_error and form_error.category_id == r.id else none %}
+        {% set stale = r.kind == "stock" and lv.reading and (now - lv.reading.occurred_at) > stale_after %}
+        <article class="res{{ ' is-low' if lv.below_threshold }}{{ ' is-stale' if stale }}" id="res-{{ r.slug }}" aria-label="{{ r.name }}">
+          <div class="res-hd">
+            <h2 class="res-name">{{ r.name }}</h2>
+            {% if r.kind == "stock" and lv.value is not none %}
+              {% if lv.below_threshold %}<span class="status low">{{ en.BOARD_STATUS_LOW }}</span>
+              {% elif stale %}<span class="status stale">{{ en.BOARD_STATUS_OLD }}</span>
+              {% elif r.shortage_threshold is not none %}<span class="status">{{ en.BOARD_STATUS_OK }}</span>{% endif %}
+            {% endif %}
+          </div>
+          {# Use-only: the number is what was used lately, and the headline says so. #}
+          {% if r.kind == "flow" and lv.latest %}
+            <p class="res-num"><span class="num">{{ (lv.used_recently or 0) | num }}</span> <span class="unit flow">{{ en.BOARD_USED_WEEK.format(unit=r.unit) }}</span></p>
+          {% elif lv.value is not none %}
+            <p class="res-num"><span class="num">{{ lv.value | num }}</span> <span class="unit">{% if r.capacity %}{{ en.BOARD_OF_CAPACITY.format(capacity=r.capacity | num, unit=r.unit) }}{% else %}{{ r.unit }}{% endif %}</span></p>
+          {% else %}
+            <p class="res-num empty">{{ en.BOARD_NOTHING_LOGGED }}</p>
+          {% endif %}
+          <div class="res-gauge">
+            {% if lv.fill is not none %}
+              {% set t = r.shortage_threshold %}
+              <svg class="bar" width="100%" height="14" aria-hidden="true" focusable="false">
+                {% if t is not none %}<title>{{ en.BOARD_WARNING_LEVEL.format(threshold=t | num, unit=r.unit) }}</title>{% endif %}
+                <rect class="track" x="0" y="3" width="100%" height="8" rx="4"></rect>
+                {% if lv.fill > 0 %}<rect class="fill" x="0" y="3" width="{{ '%.1f' | format(lv.fill * 100) }}%" height="8" rx="4"></rect>{% endif %}
+                {% if t is not none and t <= r.capacity %}<rect class="tick" x="{{ '%.1f' | format([t / r.capacity * 100, 99.5] | min) }}%" y="0" width="2" height="14" rx="1"></rect>{% endif %}
+              </svg>
+              {% if t is not none %}<span class="sr">{{ en.BOARD_WARNING_LEVEL.format(threshold=t | num, unit=r.unit) }}</span>{% endif %}
+            {% elif r.kind == "stock" and r.shortage_threshold is not none %}
+              <p class="res-line">{{ en.BOARD_LOW_BELOW.format(threshold=r.shortage_threshold | num, unit=r.unit) }}</p>
+            {% endif %}
+            {# Forecast slot (not built yet): a line such as
+               "At this rate, empty in about 9 days" belongs here, as a .res-line. #}
+          </div>
+          <p class="res-meta{{ ' stale' if stale }}">
+            {%- if lv.reading -%}
+              <span title="{{ lv.reading.occurred_at | stamp }}">{{ en.BOARD_READING_BY.format(who=short_name(lv.reading.member), ago=lv.reading.occurred_at | ago) }}</span>
+              {%- if stale %} · {{ en.BOARD_MAYBE_OLD }}{% endif -%}
+            {%- elif lv.from_zero -%}
+              {{ en.BOARD_FROM_ZERO }}
+            {%- elif r.kind == "flow" and lv.latest -%}
+              <span title="{{ lv.latest.occurred_at | stamp }}">{{ en.BOARD_LOGGED_BY.format(who=short_name(lv.latest.member), ago=lv.latest.occurred_at | ago) }}</span>
+            {%- endif -%}
+          </p>
+          <details class="log" {{ "open" if err }}>
+            <summary class="btn">Log</summary>
+            <form method="post" action="/ledger/entries" class="log-form">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <input type="hidden" name="category_id" value="{{ r.id }}">
+              {% if err and not err.field %}<span class="err" role="alert">{{ err.message }}</span>{% endif %}
+              <div class="choices" role="radiogroup" aria-label="What happened">
+                {% for t in types_for_kind[r.kind] %}
+                  <label><input type="radio" name="entry_type" value="{{ t }}" {{ "checked" if (err and err.entry_type == t) or (not err and loop.first) }}> {{ en.LEDGER_TYPE_LABELS[t] }}</label>
+                {% endfor %}
+              </div>
+              <label class="field" for="amt-{{ r.id }}">Amount
+                <span class="row-8"><input class="inp short {{ 'bad' if err and err.field == 'amount' }}" id="amt-{{ r.id }}" name="amount" inputmode="decimal" required value="{{ err.amount if err else '' }}" {% if err and err.field == 'amount' %}aria-invalid="true" aria-describedby="err-{{ r.id }}"{% endif %}><span>{{ r.unit }}</span></span></label>
+              {% if err and err.field == 'amount' %}<span class="err" id="err-{{ r.id }}" role="alert">{{ err.message }}</span>{% endif %}
+              {# Most logs are one number; time and note are behind a disclosure that
+                 opens by itself after an error in either, or when they were changed. #}
+              <details class="more" {{ "open" if err and (err.field in ("when", "note") or err.note or (err.when and err.when != err.when_prefill)) }}>
+                <summary>{{ en.LOG_FORM_MORE }}</summary>
+              {# Unchanged, the prefilled time means "now" when saving (app/board.py). #}
+              <input type="hidden" name="when_prefill" value="{{ err.when_prefill if err else default_when }}">
+              <label class="field" for="when-{{ r.id }}">{{ en.BOARD_WHEN }}
+                <input class="inp {{ 'bad' if err and err.field == 'when' }}" id="when-{{ r.id }}" name="when" type="datetime-local" value="{{ err.when if err else default_when }}" {% if err and err.field == 'when' %}aria-invalid="true" aria-describedby="err-{{ r.id }}"{% endif %}></label>
+              {% if err and err.field == 'when' %}<span class="err" id="err-{{ r.id }}" role="alert">{{ err.message }}</span>{% endif %}
+              <label class="field" for="note-{{ r.id }}">Note <span class="hint fw-normal">optional, max 140</span>
+                <input class="inp {{ 'bad' if err and err.field == 'note' }}" id="note-{{ r.id }}" name="note" maxlength="140" value="{{ err.note if err else '' }}" {% if err and err.field == 'note' %}aria-invalid="true" aria-describedby="err-{{ r.id }}"{% endif %}></label>
+              {% if err and err.field == 'note' %}<span class="err" id="err-{{ r.id }}" role="alert">{{ err.message }}</span>{% endif %}
+              </details>
+              <button class="btn" type="submit">Save</button>
+            </form>
+          </details>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <section class="card tight empty-state">
+      <p><b>{{ en.BOARD_NO_RESOURCES }}</b></p>
+      {% if "admin" in current.member.role_names %}
+        <p>{{ en.BOARD_NO_RESOURCES_ADMIN }}</p>
+        <p><a class="btn" href="/admin/resources/new">{{ en.BOARD_ADD_RESOURCE }}</a></p>
+      {% elif admins %}<p class="muted">{{ en.ASK_ADMIN.format(names=admins | join(en.ASK_ADMIN_OR)) }}</p>{% endif %}
+    </section>
+  {% endif %}
+
+  <section class="stack-4" id="open-vote" aria-labelledby="h-open-vote">
+    <div class="sect-h"><h2 id="h-open-vote">{{ en.VOTES_OPEN_VOTE }}</h2>
+      {% if open_vote %}<a class="small" href="/proposals">{{ en.VOTES_SEE_ALL }}</a>{% endif %}</div>
+    {% if open_vote %}{{ vote_card(open_vote, current, "board") }}
+    {% else %}<section class="card tight"><span class="empty">{{ en.VOTES_NONE_OPEN }} <a class="btn sm" href="/proposals/new">{{ en.VOTES_PROPOSE }}</a></span></section>{% endif %}
+  </section>
+
+  <section class="card tight" aria-label="{{ en.BOARD_RECENT }}">
+    <h2>{{ en.BOARD_RECENT }}</h2>
+    {% if recent %}
+      <ul class="plain feed">
+        {% for e in recent %}
+          <li>
+            <span class="what"><b>{{ short_name(e.member) }}</b>
+              {% if e.entry_type == "correction" %}corrected {{ e.category.name }} ({{ en.LEDGER_TYPE_PAST[e.corrects.entry_type] }}) to {{ e.amount | num }} {{ e.category.unit }}
+              {% else %}· {{ e.category.name }} {{ en.LEDGER_TYPE_PAST[e.entry_type] }} {{ e.amount | num }} {{ e.category.unit }}{% endif %}
+              {% if e.note %}<span class="muted">· “{{ e.note }}”</span>{% endif %}</span>
+            <span class="when">
+              <time datetime="{{ e.created_at.isoformat() }}" title="{{ e.created_at | stamp }}">{{ e.created_at | local }}</time>
+              {%- if en.BOARD_CHANNEL.get(e.channel) %} · {{ en.BOARD_CHANNEL[e.channel] }}{% endif %}
+              {%- set gap = e.created_at - e.occurred_at %}
+              {%- if gap > backdated_after or -gap > backdated_after %}<span class="happened">{{ en.BOARD_HAPPENED.format(when=e.occurred_at | local) }}</span>{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <span class="empty">{{ en.BOARD_NOTHING_LOGGED }}</span>
+    {% endif %}
+  </section>
+{% endblock %}

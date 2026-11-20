@@ -1,0 +1,54 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  <section class="card tight" aria-label="{{ en.RESOURCES_TITLE }}">
+    <div class="sect-h"><h2>{{ en.RESOURCES_TITLE }}</h2>
+      <a class="btn" href="/admin/resources/new">+ {{ en.RESOURCES_NEW_TITLE }}</a></div>
+    <p class="muted">{{ en.RESOURCES_INTRO }}</p>
+    {% if resources %}
+    {# Phones: one card per row, led by the name, the details on one line. #}
+    <div class="table-wrap"><table class="stack rows">
+      <thead><tr><th>Order</th><th>Resource</th><th>Unit</th><th>Kind</th><th>Capacity</th><th>Warn below</th><th>Chat words</th><th></th></tr></thead>
+      <tbody>
+      {% for r in resources %}
+        <tr class="{{ 'archived' if not r.is_active }}">
+          <td class="fit" data-label="">{% if r.is_active %}<div class="actions">
+            {% for dir, label, sym in [("up", "Move up", "↑"), ("down", "Move down", "↓")] %}
+              <form method="post" action="/admin/resources/{{ r.id }}/move">
+                <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+                <input type="hidden" name="direction" value="{{ dir }}">
+                <button class="btn sm secondary icon" type="submit" aria-label="{{ label }}: {{ r.name }}" title="{{ label }}">{{ sym }}</button>
+              </form>
+            {% endfor %}</div>{% endif %}</td>
+          <td class="lead" data-label=""><b>{{ r.name }}</b>{% if not r.is_active %} <span class="st off">archived</span>{% endif %}<br><span class="mono muted">{{ r.slug }}</span>
+            {%- set meta = [r.unit, en.RESOURCES_KIND_LABELS.get(r.kind, r.kind)] %}
+            {%- if r.capacity %}{% set _ = meta.append(en.SETTINGS_ROW_CAPACITY.format(n=r.capacity | num)) %}{% endif %}
+            {%- if r.shortage_threshold is not none %}{% set _ = meta.append(en.SETTINGS_ROW_WARN.format(n=r.shortage_threshold | num)) %}{% endif %}
+            {%- if r.alias_names %}{% set _ = meta.append(en.SETTINGS_ROW_WORDS.format(words=r.alias_names | join(", "))) %}{% endif %}
+            <span class="row-meta">{{ meta | join(" · ") }}</span></td>
+          <td class="desk" data-label="Unit">{{ r.unit }}</td>
+          <td class="desk" data-label="Kind">{{ en.RESOURCES_KIND_LABELS.get(r.kind, r.kind) }}</td>
+          <td class="desk" data-label="Capacity">{% if r.capacity %}{{ r.capacity | num }}{% else %}<span class="muted">–</span>{% endif %}</td>
+          <td class="desk" data-label="Warn below">{% if r.shortage_threshold is not none %}{{ r.shortage_threshold | num }}{% else %}<span class="muted">none</span>{% endif %}</td>
+          <td class="desk" data-label="Chat words">{% for a in r.alias_names %}<span class="tag">{{ a }}</span>{% else %}<span class="muted">–</span>{% endfor %}</td>
+          <td class="fit acts" data-label=""><div class="row-actions"><div class="actions">
+            <a class="btn sm secondary" href="/admin/resources/{{ r.id }}/history">{{ en.HISTORY_LINK }}</a>
+            <a class="btn sm secondary" href="/admin/resources/{{ r.id }}/edit">Edit</a>
+            <form method="post" action="/admin/resources/{{ r.id }}/{{ 'archive' if r.is_active else 'restore' }}">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <button class="btn sm secondary" type="submit">{{ "Archive" if r.is_active else "Restore" }}</button>
+            </form>
+            </div>
+            <form class="danger-zone" method="get" action="/admin/resources/{{ r.id }}/delete">
+              <button class="btn sm danger" type="submit">Delete</button>
+            </form>
+          </div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+      <span class="empty">No resources yet. Add the first one.</span>
+    {% endif %}
+    <span class="small muted">{{ en.RESOURCES_NOTE }}</span>
+  </section>
+{% endblock %}

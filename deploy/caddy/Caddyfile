@@ -1,0 +1,167 @@
+# COMMONS edge proxy: the only service reachable from the LAN.
+#
+# - TLS, chosen with COMMONS_TLS:
+#     desec     Let's Encrypt certificate via the DNS-01 challenge at deSEC. Trusted
+#               by every phone and app (incl. Element X) with nothing to install;
+#               the box does not need to be reachable from the internet, only able
+#               to reach Let's Encrypt and deSEC every ~60 days to renew.
+#     internal  Caddy's own local CA. Fully offline, but members must install the
+#               root certificate (docs/phone-certificate-setup.md), and Element X
+#               does not trust it.
+# - Only HTTPS. Plain HTTP (port 80) is deliberately not served or published.
+# - Runs as a non-root user, so it listens on 8443 inside the container;
+#   docker compose maps host port 443 to it.
+{
+	# The admin API is not needed at runtime; restart the container to reload.
+	admin off
+
+	# Non-root: listen on unprivileged ports inside the container.
+	https_port 8443
+	http_port 8080
+
+	# No HTTP->HTTPS redirect listener: port 80 stays closed (only 443 is published).
+	auto_https disable_redirects
+
+	# Inside a container there is no system trust store to install the root into.
+	skip_install_trust
+
+	# Clients send no SNI when they connect to a bare IP address, so tell Caddy
+	# which certificate to present then. Set it to the IP members use.
+	default_sni {$COMMONS_DEFAULT_SNI:localhost}
+
+	servers {
+		# Only TCP 443 is published, so do not advertise HTTP/3 (UDP) via Alt-Svc.
+		protocols h1 h2
+	}
+}
+
+(tls_internal) {
+	tls internal
+}
+
+(tls_desec) {
+	tls {
+		# Token from a Docker secret file; never put it in the environment or here.
+		dns desec {
+			token {file./run/secrets/desec_token}
+		}
+		# deSEC needs a moment to publish the challenge record on all its servers;
+		# checking too early makes Let's Encrypt cache "not found".
+		propagation_delay 180s
+	}
+}
+
+(site_common) {
+	import tls_{$COMMONS_TLS:internal}
+
+	header {
+		Strict-Transport-Security "max-age={$COMMONS_HSTS_MAX_AGE:31536000}"
+		-Server
+	}
+}
+
+# The bot's internal API is only for the internal Docker network.
+# Caddy's path matcher is case-insensitive and works on the normalized path.
+# Imported first inside each site's `route`, so it runs before any proxying
+# (outside a `route`, Caddy would sort `handle` blocks ahead of `respond`).
+(block_internal) {
+	@internal path /internal /internal/*
+	respond @internal 404 {
+		close
+	}
+}
+
+# Synapse behind matrix.*, the Matrix Authentication Service (MAS) on auth.*.
+#
+# Brute-force protection for passwords. MAS has its own limits too; Caddy adds
+# a per-IP cap on the login endpoints. Over the limit:
+# HTTP 429 with Retry-After.
+(matrix_login_limits) {
+	rate_limit {
+		zone matrix_login_minute {
+			match {
+				method POST
+				path /_matrix/client/*/login /_matrix/client/*/register /_matrix/client/*/register/*
+			}
+			key {remote_host}
+			events {$COMMONS_LOGIN_LIMIT_PER_MINUTE:10}
+			window 1m
+		}
+		zone matrix_login_hour {
+			match {
+				method POST
+				path /_matrix/client/*/login /_matrix/client/*/register /_matrix/client/*/register/*
+			}
+			key {remote_host}
+			events {$COMMONS_LOGIN_LIMIT_PER_HOUR:60}
+			window 1h
+		}
+	}
+}
+
+# COMMONS_HOSTS: the name members use for COMMONS, e.g. "commons.theoutpost.network".
+# It is also the Matrix server_name (user IDs look like @name:commons.theoutpost.network).
+# With COMMONS_TLS=internal, IP addresses work too, e.g. "192.168.0.179".
+{$COMMONS_HOSTS:localhost} {
+	import site_common
+
+	# `route` runs its contents in exactly this order.
+	route {
+		import block_internal
+
+		# Matrix discovery: tells Element X where the homeserver lives.
+		reverse_proxy /.well-known/matrix/* matrix:8008
+
+		reverse_proxy {$COMMONS_UPSTREAM:app:8000}
+	}
+}
+
+# COMMONS_MATRIX_HOST: the Matrix homeserver, e.g. "matrix.commons.theoutpost.network".
+{$COMMONS_MATRIX_HOST:matrix.localhost} {
+	import site_common
+
+	route {
+		import block_internal
+
+		# Federation is off; don't even expose its endpoints.
+		@federation path /_matrix/federation/* /_matrix/key/*
+		respond @federation 404 {
+			close
+		}
+
+		import matrix_login_limits
+
+		# MAS compatibility layer: legacy login/logout/refresh go to MAS.
+		@mas_compat path_regexp ^/_matrix/client/[^/]+/(login|logout|refresh)(/.*)?$
+		reverse_proxy @mas_compat mas:8080
+
+		reverse_proxy matrix:8008
+	}
+}
+
+# COMMONS_AUTH_HOST: Matrix Authentication Service (login, consent, account pages).
+{$COMMONS_AUTH_HOST:auth.localhost} {
+	import site_common
+
+	route {
+		import block_internal
+		rate_limit {
+			zone mas_login_minute {
+				match {
+					method POST
+					path /login /register /register/*
+				}
+				key {remote_host}
+				events {$COMMONS_LOGIN_LIMIT_PER_MINUTE:10}
+				window 1m
+			}
+		}
+		reverse_proxy mas:8080
+	}
+}
+
+# Container healthcheck endpoint, loopback only (never published).
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	respond /healthz 200
+}

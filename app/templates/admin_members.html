@@ -1,0 +1,92 @@
+{% extends "settings_base.html" %}
+{% block settings %}
+  {# Shown once, so it goes first, above the list. #}
+  {% if new_invite %}
+    <section class="card tight new-invite" aria-label="{{ en.ADMIN_INVITE_LINK }}" role="status">
+        <b>{{ en.ADMIN_NEW_INVITE.format(expires=new_invite.invite.expires_at | local) }}</b>
+        <div class="copy-out">
+          <code class="link-out" id="invite-link" aria-label="{{ en.ADMIN_INVITE_LINK }}">{{ new_invite.link }}</code>
+          <button class="btn sm secondary" type="button" data-copy="invite-link" data-copied="{{ en.COPIED }}" aria-live="polite" hidden>{{ en.COPY }}</button>
+        </div>
+        <span class="small">{{ en.ADMIN_NEW_INVITE_CODE }} <code class="mono">{{ new_invite.code }}</code></span>
+    </section>
+  {% endif %}
+  <section class="card tight" aria-label="{{ en.ADMIN_MEMBERS_TITLE }}">
+    <div class="sect-h"><h2>{{ en.ADMIN_MEMBERS_TITLE }}</h2>
+      <span class="small muted">{{ members | selectattr("is_active") | list | length }} active</span></div>
+    <div class="table-wrap"><table class="stack members">
+      <thead><tr><th>{{ en.ADMIN_COL_MEMBER }}</th><th>{{ en.ADMIN_COL_ROLES }}</th><th>{{ en.ADMIN_COL_ACTIONS }}</th></tr></thead>
+      <tbody>
+      {% for m in members %}
+        {% set name = short_name(m) %}
+        <tr class="{{ 'archived' if not m.is_active }}">
+          <td data-label="{{ en.ADMIN_COL_MEMBER }}"><b>{{ name }}</b><br><span class="small muted break">{{ m.matrix_user_id }}</span></td>
+          {# Only the exceptions: every row is a member, and most are active. #}
+          <td data-label="{{ en.ADMIN_COL_ROLES }}">{% for r in m.role_names | sort if r != "member" %}<span class="tag">{{ r }}</span>{% endfor %}
+            {%- if not m.is_active %}<span class="st off">{{ en.ADMIN_DEACTIVATED }}</span>{% endif %}</td>
+          {# One line, as in the other settings tables: roles, then the account, Delete apart.
+             What deactivating does is said once, under the table. #}
+          <td data-label=""><div class="row-actions">
+            <div class="actions" role="group" aria-label="{{ en.ADMIN_ROLE_ACTIONS.format(name=name) }}">
+            {% for role in roles if role != "member" %}
+              {% set held = role in m.role_names %}
+              <form method="post" action="/admin/members/{{ m.id }}/{{ 'revoke' if held else 'grant' }}">
+                <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+                <input type="hidden" name="role" value="{{ role }}">
+                <button class="btn sm secondary" type="submit">{{ (en.ADMIN_REVOKE if held else en.ADMIN_GRANT).format(role=role) }}</button>
+              </form>
+            {% endfor %}
+            </div>
+            <form method="post" action="/admin/members/{{ m.id }}/{{ 'deactivate' if m.is_active else 'reactivate' }}">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              {% if m.is_active %}
+                <button class="btn sm secondary warn" type="submit" aria-describedby="deact-hint">{{ en.ADMIN_DEACTIVATE }}</button>
+              {% else %}
+                <button class="btn sm secondary" type="submit">{{ en.ADMIN_REACTIVATE }}</button>
+              {% endif %}
+            </form>
+            {% if m.id != current.member.id %}
+              {# Only opens the confirmation page; deleting is the POST there. #}
+              <form class="danger-zone" method="get" action="/admin/members/{{ m.id }}/delete">
+                <button class="btn sm danger" type="submit">{{ en.ADMIN_DELETE }}</button>
+              </form>
+            {% endif %}
+          </div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <span class="small muted">{{ en.ADMIN_MEMBERS_NOTE }} <span id="deact-hint">{{ en.ADMIN_DEACTIVATE_HINT }}</span></span>
+  </section>
+
+  <section class="card tight" aria-label="{{ en.ADMIN_INVITES }}">
+    <div class="sect-h"><h2>{{ en.ADMIN_INVITES }}</h2></div>
+    <p class="muted">{{ en.ADMIN_INVITES_INTRO.format(hours=invite_hours) }}</p>
+    <form class="inline-form" method="post" action="/admin/invites">
+      <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+      <label class="lab" for="f-invite-note">{{ en.ADMIN_INVITE_NOTE }}</label>
+      <div class="inline-row">
+        <input class="inp" id="f-invite-note" name="note" maxlength="100" autocomplete="off">
+        <button class="btn" type="submit">{{ en.ADMIN_CREATE_INVITE }}</button>
+      </div>
+    </form>
+    {% if invites %}
+      <h3>{{ en.ADMIN_OPEN_INVITES }}</h3>
+      <div class="table-wrap"><table class="stack">
+        <thead><tr><th>{{ en.ADMIN_COL_NOTE }}</th><th>{{ en.ADMIN_COL_CREATED }}</th><th>{{ en.ADMIN_COL_EXPIRES }}</th><th></th></tr></thead>
+        <tbody>
+        {% for i in invites %}
+          <tr>
+            <td data-label="Note">{{ i.note or "" }}</td>
+            <td data-label="Created by">{{ short_name(i.creator) }}</td>
+            <td data-label="Expires">{{ i.expires_at | local }}</td>
+            <td data-label=""><form method="post" action="/admin/invites/{{ i.id }}/revoke">
+              <input type="hidden" name="csrf_token" value="{{ current.csrf_token }}">
+              <button class="btn sm secondary" type="submit">{{ en.ADMIN_REVOKE_INVITE }}</button></form></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% endif %}
+  </section>
+{% endblock %}
